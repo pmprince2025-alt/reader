@@ -39,6 +39,7 @@ dependencies {
     implementation(project(":feature:feature-bookshelf"))
     implementation(project(":feature:feature-reader"))
     implementation(project(":feature:feature-settings"))
+    implementation(project(":pdf-engine"))
     implementation(platform(libs.compose.bom))
     implementation(libs.compose.ui)
     implementation(libs.compose.ui.graphics)
