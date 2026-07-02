@@ -17,6 +17,5 @@ android {
 
 dependencies {
     implementation("androidx.benchmark:benchmark-macro-junit4:1.3.1")
-    implementation(libs.compose.ui.tooling.preview)
     implementation(libs.androidx.core.ktx)
 }
