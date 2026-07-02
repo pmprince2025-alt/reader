@@ -2,7 +2,7 @@ package com.folio.pdfengine
 
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
-import android.graphics.PdfRenderer
+import android.graphics.pdf.PdfRenderer
 import android.os.ParcelFileDescriptor
 import java.io.File
 
