@@ -66,7 +66,7 @@ internal class PdfiumNativeDocumentSource(
                     entries.add(
                         PdfDocumentSource.TocEntry(
                             title = bm.title,
-                            pageIndex = bm.pageIdx,
+                            pageIndex = bm.pageIdx.toInt(),
                             depth = depth
                         )
                     )

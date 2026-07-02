@@ -15,6 +15,7 @@ android {
 }
 
 dependencies {
+    implementation(project(":core:core-database"))
     implementation(project(":data:data-library"))
     implementation(project(":pdf-engine"))
     implementation(libs.coroutines.android)
