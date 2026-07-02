@@ -7,7 +7,7 @@ import androidx.compose.animation.*
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
-import androidx.compose.animation.core.withFrameMillis
+import androidx.compose.runtime.withFrameNanos
 import androidx.compose.foundation.*
 import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.gestures.detectTransformGestures
@@ -27,15 +27,17 @@ import androidx.compose.ui.graphics.*
 import androidx.compose.ui.graphics.drawscope.*
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.platform.LocalHapticFeedback
+import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.text.rememberTextMeasurer
+import androidx.compose.ui.text.TextMeasurer
+import androidx.compose.ui.text.drawText
+import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -72,9 +74,9 @@ fun ReaderScreen(
     var showTocSheet by remember { mutableStateOf(false) }
     val scope = rememberCoroutineScope()
     val uiContext = LocalContext.current
-    val haptic = LocalHapticFeedback.current
     val hapticsEnabled by viewModel.hapticsEnabled.collectAsState(initial = true)
     val hapticsIntensity by viewModel.hapticsIntensity.collectAsState(initial = 1.0f)
+    val currentView = LocalView.current
     val reduceMotion = remember {
         try {
             Settings.Global.getFloat(
@@ -92,6 +94,7 @@ fun ReaderScreen(
             .fillMaxSize()
             .background(backgroundColor)
     ) {
+        val errorMessage = state.errorMessage
         when {
             state.isLoading -> {
                 CircularProgressIndicator(
@@ -99,7 +102,7 @@ fun ReaderScreen(
                     color = textColor
                 )
             }
-            state.errorMessage != null -> {
+            errorMessage != null -> {
                 Column(
                     modifier = Modifier.align(Alignment.Center).padding(32.dp),
                     horizontalAlignment = Alignment.CenterHorizontally
@@ -112,7 +115,7 @@ fun ReaderScreen(
                     )
                     Spacer(modifier = Modifier.height(16.dp))
                     Text(
-                        text = state.errorMessage,
+                        text = errorMessage,
                         color = textColor,
                         style = MaterialTheme.typography.bodyLarge
                     )
@@ -135,7 +138,7 @@ fun ReaderScreen(
                                 onChromeToggle = { viewModel.toggleChrome() },
                                 onPageChanged = { page ->
                                     if (hapticsEnabled) {
-                                        haptic.performHapticFeedback(HapticFeedbackType.LightImpact)
+                                        currentView.performHapticFeedback(android.view.HapticFeedbackConstants.KEYBOARD_TAP)
                                     }
                                     viewModel.onPageTurnComplete(page)
                                 }
@@ -168,13 +171,13 @@ fun ReaderScreen(
                             },
                             onPrevPage = {
                                 if (hapticsEnabled) {
-                                    haptic.performHapticFeedback(HapticFeedbackType.LightImpact)
+                                    currentView.performHapticFeedback(android.view.HapticFeedbackConstants.KEYBOARD_TAP)
                                 }
                                 viewModel.navigateToPage(state.currentPage - 1)
                             },
                             onNextPage = {
                                 if (hapticsEnabled) {
-                                    haptic.performHapticFeedback(HapticFeedbackType.LightImpact)
+                                    currentView.performHapticFeedback(android.view.HapticFeedbackConstants.KEYBOARD_TAP)
                                 }
                                 viewModel.navigateToPage(state.currentPage + 1)
                             }
@@ -283,14 +286,14 @@ fun ReaderScreen(
                 LaunchedEffect(state.turnMode) {
                     if (state.turnMode != TurnMode.CURL || reduceMotion) return@LaunchedEffect
 
-                    var lastFrameTime = withFrameMillis { it }
+                    var lastFrameTime = withFrameNanos { it }
                     var consecutiveDrops = 0
                     var hasTriggeredFallback = false
 
                     while (!hasTriggeredFallback) {
                         delay(500)
-                        val currentFrameTime = withFrameMillis { it }
-                        val fps = 1000f / (currentFrameTime - lastFrameTime).coerceAtLeast(1f)
+                        val currentFrameTime = withFrameNanos { it }
+                        val fps = 1_000_000_000f / (currentFrameTime - lastFrameTime).coerceAtLeast(1f)
                         lastFrameTime = currentFrameTime
 
                         if (fps < 30f) {
@@ -676,7 +679,7 @@ private fun DrawScope.drawCornerCurl(
     if (currentPageBitmap != null) {
         drawImage(
             image = currentPageBitmap.asImageBitmap(),
-            dstOffset = Offset.Zero,
+            dstOffset = IntOffset.Zero,
             dstSize = IntSize(w.toInt(), h.toInt())
         )
     } else {
@@ -784,7 +787,7 @@ private fun DrawScope.drawPageOnCanvas(
         if (bitmap != null) {
             drawImage(
                 image = bitmap.asImageBitmap(),
-                dstOffset = area,
+                dstOffset = IntOffset(area.x.toInt(), area.y.toInt()),
                 dstSize = IntSize(pageWidth.toInt(), height.toInt())
             )
         } else {

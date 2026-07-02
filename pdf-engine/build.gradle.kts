@@ -16,5 +16,7 @@ android {
 
 dependencies {
     implementation(libs.coroutines.android)
-    implementation(libs.pdfium.android)
+    implementation(libs.pdfium.android) {
+        exclude(group = "com.android.support", module = "support-compat")
+    }
 }
