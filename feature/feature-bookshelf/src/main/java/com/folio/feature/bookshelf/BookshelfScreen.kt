@@ -313,6 +313,7 @@ fun BookshelfScreen(
 }
 
 }
+}
 
 @Composable
 fun BookshelfContent(
@@ -393,7 +394,7 @@ fun BookshelfContent(
                                             .size(24.dp),
                                         strokeWidth = 2.dp,
                                         trackColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
-                                        indicatorColor = MaterialTheme.colorScheme.primary
+                                        color = MaterialTheme.colorScheme.primary
                                     )
                                 }
                             }
@@ -598,5 +599,4 @@ fun EmptyLibraryState(importLauncher: androidx.activity.result.ActivityResultLau
             }
         }
     }
-}
 }
