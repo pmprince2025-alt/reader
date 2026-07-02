@@ -195,10 +195,10 @@ class BookshelfViewModel @Inject constructor(
                 try {
                     val fileName = getFileName(uri) ?: "Untitled.pdf"
                     val inputStream = context.contentResolver.openInputStream(uri)
-                        ?: run {
-                            failCount++
-                            continue
-                        }
+                    if (inputStream == null) {
+                        failCount++
+                        continue
+                    }
                     val file = File(context.filesDir, "imports/${System.currentTimeMillis()}_$fileName")
                     file.parentFile?.mkdirs()
                     withContext(Dispatchers.IO) {
