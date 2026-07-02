@@ -26,7 +26,7 @@ data class UpdateInfo(
 )
 
 object UpdateParser {
-    private val json = Json { ignoreUnknownKeys = true }
+    private val json = Json { ignoreUnknownKeys = true; coerceInputValues = true }
 
     fun parseRelease(response: String): UpdateInfo? {
         return try {
