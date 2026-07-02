@@ -8,7 +8,7 @@ import kotlinx.serialization.json.JsonElement
 data class GitHubRelease(
     val tag_name: String,
     val assets: List<ReleaseAsset> = emptyList(),
-    val body: String = ""
+    val body: String? = null
 )
 
 @Serializable
@@ -21,7 +21,7 @@ data class ReleaseAsset(
 data class UpdateInfo(
     val latestVersion: String,
     val downloadUrl: String,
-    val releaseNotes: String,
+    val releaseNotes: String? = null,
     val fileSize: Long
 )
 
