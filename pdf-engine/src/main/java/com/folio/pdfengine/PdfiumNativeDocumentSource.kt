@@ -79,7 +79,7 @@ internal class PdfiumNativeDocumentSource(
             core.closeDocument(pdfDocument)
             tocPfd.close()
             entries
-        } catch (e: Exception) {
+        } catch (e: Throwable) {
             e.printStackTrace()
             emptyList()
         }
