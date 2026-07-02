@@ -60,7 +60,7 @@ class UpdateManager @Inject constructor(
                 return@withContext UpdateState(errorMessage = "No APK found in latest release")
             }
 
-            val current = getCurrentVersion()
+            val current = currentVersion
             val available = compareVersions(current, info.latestVersion)
 
             UpdateState(
