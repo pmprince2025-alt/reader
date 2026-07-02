@@ -49,6 +49,9 @@ class UpdateManager @Inject constructor(
             conn.connectTimeout = 10000
             conn.readTimeout = 10000
 
+            if (conn.responseCode == 404) {
+                return@withContext UpdateState(isAvailable = false, updateInfo = null)
+            }
             if (conn.responseCode != 200) {
                 return@withContext UpdateState(errorMessage = "Update check failed (${conn.responseCode})")
             }
