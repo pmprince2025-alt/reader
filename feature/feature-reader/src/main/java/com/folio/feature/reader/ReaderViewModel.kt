@@ -56,30 +56,36 @@ class ReaderViewModel @Inject constructor(
 
     init {
         viewModelScope.launch {
-            settingsDataStore.turnMode.collect { mode ->
-                val mapped = when (mode) {
-                    SettingsDataStore.TurnMode.CURL -> TurnMode.CURL
-                    SettingsDataStore.TurnMode.SLIDE -> TurnMode.SLIDE
-                    SettingsDataStore.TurnMode.SCROLL -> TurnMode.SCROLL
+            try {
+                settingsDataStore.turnMode.collect { mode ->
+                    val mapped = when (mode) {
+                        SettingsDataStore.TurnMode.CURL -> TurnMode.CURL
+                        SettingsDataStore.TurnMode.SLIDE -> TurnMode.SLIDE
+                        SettingsDataStore.TurnMode.SCROLL -> TurnMode.SCROLL
+                    }
+                    _uiState.update { it.copy(turnMode = mapped) }
                 }
-                _uiState.update { it.copy(turnMode = mapped) }
-            }
+            } catch (_: Exception) {}
         }
         viewModelScope.launch {
-            settingsDataStore.readingMode.collect { mode ->
-                val mapped = when (mode) {
-                    SettingsDataStore.ReadingMode.STANDARD -> ReadingMode.STANDARD
-                    SettingsDataStore.ReadingMode.SEPIA -> ReadingMode.SEPIA
-                    SettingsDataStore.ReadingMode.NIGHT -> ReadingMode.NIGHT
+            try {
+                settingsDataStore.readingMode.collect { mode ->
+                    val mapped = when (mode) {
+                        SettingsDataStore.ReadingMode.STANDARD -> ReadingMode.STANDARD
+                        SettingsDataStore.ReadingMode.SEPIA -> ReadingMode.SEPIA
+                        SettingsDataStore.ReadingMode.NIGHT -> ReadingMode.NIGHT
+                    }
+                    _uiState.update { it.copy(readingMode = mapped) }
                 }
-                _uiState.update { it.copy(readingMode = mapped) }
-            }
+            } catch (_: Exception) {}
         }
     }
 
     val hapticsEnabled = settingsDataStore.hapticsEnabled
+        .catch { emit(true) }
         .stateIn(viewModelScope, SharingStarted.Eagerly, true)
     val hapticsIntensity = settingsDataStore.hapticsIntensity
+        .catch { emit(1.0f) }
         .stateIn(viewModelScope, SharingStarted.Eagerly, 1.0f)
 
     fun loadBook(id: Long) {
@@ -127,7 +133,7 @@ class ReaderViewModel @Inject constructor(
                         generateThumbnail(doc, book.id)
                     }
                 }
-            } catch (e: Exception) {
+            } catch (e: Throwable) {
                 _uiState.update { it.copy(errorMessage = e.message ?: "Error loading book", isLoading = false) }
             }
         }

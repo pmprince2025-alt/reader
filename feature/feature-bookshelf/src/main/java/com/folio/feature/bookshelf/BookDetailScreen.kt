@@ -110,7 +110,7 @@ fun BookDetailScreen(
 
             // Primary action button
             Button(
-                onClick = { onStartReading(book.id) },
+                onClick = { book?.let { onStartReading(it.id) } },
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(52.dp),
