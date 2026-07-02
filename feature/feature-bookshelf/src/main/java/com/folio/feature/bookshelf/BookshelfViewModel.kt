@@ -9,6 +9,7 @@ import com.folio.core.database.BookDao
 import com.folio.core.database.ReadingProgressDao
 import com.folio.core.database.ShelfDao
 import com.folio.core.database.BookEntity
+import com.folio.core.database.BookShelfCrossRef
 import com.folio.core.database.ShelfEntity
 import com.folio.pdfengine.PdfPageRenderer
 import dagger.hilt.android.lifecycle.HiltViewModel
