@@ -4,7 +4,10 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.folio.core.datastore.SettingsDataStore
 import dagger.hilt.android.lifecycle.HiltViewModel
-import kotlinx.coroutines.flow.*
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
@@ -22,16 +25,9 @@ class SettingsViewModel @Inject constructor(
     private val settingsDataStore: SettingsDataStore
 ) : ViewModel() {
 
-    val uiState: StateFlow<SettingsUiState> = combine(
-        settingsDataStore.turnMode,
-        settingsDataStore.appTheme,
-        settingsDataStore.readingMode,
-        settingsDataStore.hapticsEnabled,
-        settingsDataStore.hapticsIntensity,
-        settingsDataStore.storageBudgetMb
-    ) { turn, theme, reading, haptics, intensity, budget ->
-        SettingsUiState(turn, theme, reading, haptics, intensity, budget)
-    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), SettingsUiState())
+    val uiState: StateFlow<SettingsUiState> = settingsDataStore.settings
+        .map { SettingsUiState(it.turnMode, it.appTheme, it.readingMode, it.hapticsEnabled, it.hapticsIntensity, it.storageBudgetMb) }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), SettingsUiState())
 
     fun setTurnMode(mode: SettingsDataStore.TurnMode) {
         viewModelScope.launch { settingsDataStore.setTurnMode(mode) }

@@ -71,6 +71,26 @@ class SettingsDataStore(private val context: Context) {
         prefs[Keys.STORAGE_BUDGET_MB] ?: 500
     }
 
+    data class Settings(
+        val turnMode: TurnMode,
+        val appTheme: AppTheme,
+        val readingMode: ReadingMode,
+        val hapticsEnabled: Boolean,
+        val hapticsIntensity: Float,
+        val storageBudgetMb: Int
+    )
+
+    val settings: Flow<Settings> = context.dataStore.data.map { prefs ->
+        Settings(
+            turnMode = TurnMode.fromValue(prefs[Keys.TURN_MODE] ?: TurnMode.CURL.value),
+            appTheme = AppTheme.fromValue(prefs[Keys.APP_THEME] ?: AppTheme.SYSTEM.value),
+            readingMode = ReadingMode.fromValue(prefs[Keys.READING_MODE] ?: ReadingMode.STANDARD.value),
+            hapticsEnabled = prefs[Keys.HAPTICS_ENABLED] ?: true,
+            hapticsIntensity = prefs[Keys.HAPTICS_INTENSITY] ?: 1.0f,
+            storageBudgetMb = prefs[Keys.STORAGE_BUDGET_MB] ?: 500
+        )
+    }
+
     suspend fun setTurnMode(mode: TurnMode) {
         context.dataStore.edit { it[Keys.TURN_MODE] = mode.value }
     }
