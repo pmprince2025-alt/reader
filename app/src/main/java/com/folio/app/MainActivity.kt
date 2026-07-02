@@ -11,6 +11,7 @@ import androidx.compose.material3.Surface
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
+import com.folio.app.update.UpdateManager
 import com.folio.core.datastore.SettingsDataStore
 import com.folio.core.ui.theme.FolioTheme
 import dagger.hilt.android.AndroidEntryPoint
@@ -21,6 +22,9 @@ class MainActivity : ComponentActivity() {
 
     @Inject
     lateinit var settingsDataStore: SettingsDataStore
+
+    @Inject
+    lateinit var updateManager: UpdateManager
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -37,7 +41,7 @@ class MainActivity : ComponentActivity() {
             }
             FolioTheme(darkTheme = isDarkOverride) {
                 Surface(modifier = Modifier.fillMaxSize()) {
-                    FolioNavGraph()
+                    FolioNavGraph(updateManager = updateManager)
                 }
             }
         }

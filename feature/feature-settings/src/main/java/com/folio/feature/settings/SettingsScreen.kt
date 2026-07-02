@@ -20,6 +20,9 @@ import com.folio.core.ui.theme.screenMargin
 @Composable
 fun SettingsScreen(
     onBackClick: () -> Unit,
+    onCheckForUpdates: () -> Unit = {},
+    currentVersion: String = "1.0.0",
+    updateStatus: String? = null,
     viewModel: SettingsViewModel = hiltViewModel()
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
@@ -92,9 +95,30 @@ fun SettingsScreen(
 
             Spacer(modifier = Modifier.height(32.dp))
 
+            // Update section
+            HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
+            SettingsSectionHeader("Update")
+            Button(
+                onClick = onCheckForUpdates,
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(12.dp)
+            ) {
+                Text("Check for Updates")
+            }
+            if (updateStatus != null) {
+                Text(
+                    text = updateStatus,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(top = 8.dp)
+                )
+            }
+
+            Spacer(modifier = Modifier.height(16.dp))
+
             // App info
             Text(
-                text = "Folio v1.0.0",
+                text = "Folio v$currentVersion",
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier.align(Alignment.CenterHorizontally)

@@ -6,15 +6,22 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.animation.scaleIn
 import androidx.compose.animation.scaleOut
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.toRoute
+import com.folio.app.update.UpdateManager
 import com.folio.feature.bookshelf.BookDetailScreen
 import com.folio.feature.bookshelf.BookshelfScreen
 import com.folio.feature.reader.ReaderScreen
 import com.folio.feature.settings.SettingsScreen
+import kotlinx.coroutines.launch
 import kotlinx.serialization.Serializable
 
 @Serializable object BookshelfRoute
@@ -24,12 +31,17 @@ import kotlinx.serialization.Serializable
 
 @Composable
 fun FolioNavGraph(
-    navController: NavHostController = rememberNavController()
+    navController: NavHostController = rememberNavController(),
+    updateManager: UpdateManager? = null
 ) {
     val pendingUri = PendingImport.uri
     if (pendingUri != null) {
         PendingImport.uri = null
     }
+
+    val scope = rememberCoroutineScope()
+    var updateStatus by remember { mutableStateOf<String?>(null) }
+    val currentVersion = updateManager?.currentVersion ?: "1.0.0"
 
     NavHost(
         navController = navController,
@@ -81,7 +93,40 @@ fun FolioNavGraph(
             exitTransition = { fadeOut(animationSpec = spring(dampingRatio = 0.8f)) + scaleOut(targetScale = 0.95f, animationSpec = spring(dampingRatio = 0.8f)) }
         ) {
             SettingsScreen(
-                onBackClick = { navController.popBackStack() }
+                onBackClick = { navController.popBackStack() },
+                onCheckForUpdates = {
+                    updateManager?.let { mgr ->
+                        scope.launch {
+                            updateStatus = "Checking..."
+                            val result = mgr.checkForUpdate()
+                            if (result.errorMessage != null) {
+                                updateStatus = result.errorMessage
+                                return@launch
+                            }
+                            if (!result.isAvailable || result.updateInfo == null) {
+                                updateStatus = "You're up to date (v$currentVersion)"
+                                return@launch
+                            }
+                            val info = result.updateInfo
+                            updateStatus = "Downloading update..."
+                            val file = mgr.downloadUpdate(info) { progress ->
+                                updateStatus = "Downloading... ${(progress * 100).toInt()}%"
+                            }
+                            if (file == null) {
+                                updateStatus = "Download failed"
+                                return@launch
+                            }
+                            updateStatus = "Installing..."
+                            if (mgr.installApk()) {
+                                updateStatus = null
+                            } else {
+                                updateStatus = "Install failed"
+                            }
+                        }
+                    }
+                },
+                currentVersion = currentVersion,
+                updateStatus = updateStatus
             )
         }
     }
