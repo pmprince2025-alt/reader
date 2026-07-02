@@ -182,49 +182,62 @@ class BookshelfViewModel @Inject constructor(
     }
 
     fun importUri(uri: Uri) {
+        importUris(listOf(uri))
+    }
+
+    fun importUris(uris: List<Uri>) {
         viewModelScope.launch {
             _isImporting.value = true
             _importError.value = null
-            try {
-                val fileName = getFileName(uri) ?: "Untitled.pdf"
-                val inputStream = context.contentResolver.openInputStream(uri)
-                    ?: run {
-                        _importError.value = "Could not open the selected file"
-                        return@launch
-                    }
-                val file = File(context.filesDir, "imports/${System.currentTimeMillis()}_$fileName")
-                file.parentFile?.mkdirs()
-                withContext(Dispatchers.IO) {
-                    inputStream.use { input ->
-                        FileOutputStream(file).use { output ->
-                            input.copyTo(output)
+            var successCount = 0
+            var failCount = 0
+            for (uri in uris) {
+                try {
+                    val fileName = getFileName(uri) ?: "Untitled.pdf"
+                    val inputStream = context.contentResolver.openInputStream(uri)
+                        ?: run {
+                            failCount++
+                            continue
+                        }
+                    val file = File(context.filesDir, "imports/${System.currentTimeMillis()}_$fileName")
+                    file.parentFile?.mkdirs()
+                    withContext(Dispatchers.IO) {
+                        inputStream.use { input ->
+                            FileOutputStream(file).use { output ->
+                                input.copyTo(output)
+                            }
                         }
                     }
-                }
-                val doc = pdfRenderer.openDocument(file.absolutePath)
-                if (doc == null) {
-                    file.delete()
-                    _importError.value = "Could not open PDF. The file may be corrupted or password-protected."
-                    return@launch
-                }
-                val bookId = bookDao.insertBook(
-                    BookEntity(
-                        title = fileName.removeSuffix(".pdf").removeSuffix(".PDF"),
-                        filePath = file.absolutePath,
-                        uri = uri.toString(),
-                        pageCount = doc.pageCount,
-                        fileSize = file.length(),
-                        dateAdded = System.currentTimeMillis()
+                    val doc = pdfRenderer.openDocument(file.absolutePath)
+                    if (doc == null) {
+                        file.delete()
+                        failCount++
+                        continue
+                    }
+                    val bookId = bookDao.insertBook(
+                        BookEntity(
+                            title = fileName.removeSuffix(".pdf").removeSuffix(".PDF"),
+                            filePath = file.absolutePath,
+                            uri = uri.toString(),
+                            pageCount = doc.pageCount,
+                            fileSize = file.length(),
+                            dateAdded = System.currentTimeMillis()
+                        )
                     )
-                )
-                doc.close()
-                generateThumbnail(file.absolutePath, bookId)
-            } catch (e: Exception) {
-                e.printStackTrace()
-                _importError.value = "Import failed: ${e.message ?: "Unknown error"}"
-            } finally {
-                _isImporting.value = false
+                    doc.close()
+                    generateThumbnail(file.absolutePath, bookId)
+                    successCount++
+                } catch (e: Exception) {
+                    e.printStackTrace()
+                    failCount++
+                }
             }
+            if (failCount > 0 && successCount == 0) {
+                _importError.value = "Import failed for all $failCount file(s)"
+            } else if (failCount > 0) {
+                _importError.value = "Imported $successCount file(s), $failCount failed"
+            }
+            _isImporting.value = false
         }
     }
 

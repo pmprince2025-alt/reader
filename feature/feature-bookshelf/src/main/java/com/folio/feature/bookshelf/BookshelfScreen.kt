@@ -58,9 +58,9 @@ fun BookshelfScreen(
     }
 
     val importLauncher = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.OpenDocument()
-    ) { uri: Uri? ->
-        uri?.let { viewModel.importUri(it) }
+        contract = ActivityResultContracts.OpenMultipleDocuments()
+    ) { uris: List<Uri>? ->
+        uris?.let { viewModel.importUris(it) }
     }
 
     Box(modifier = Modifier.fillMaxSize()) {
@@ -113,7 +113,7 @@ fun BookshelfScreen(
                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
                         CircularProgressIndicator()
                         Spacer(modifier = Modifier.height(16.dp))
-                        Text("Importing PDF...", style = MaterialTheme.typography.bodyMedium)
+                        Text("Importing PDFs...", style = MaterialTheme.typography.bodyMedium)
                     }
                 }
             }
