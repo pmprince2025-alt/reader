@@ -40,6 +40,8 @@ dependencies {
     implementation(project(":feature:feature-reader"))
     implementation(project(":feature:feature-settings"))
     implementation(project(":pdf-engine"))
+    implementation(libs.room.runtime)
+    implementation(libs.room.ktx)
     implementation(platform(libs.compose.bom))
     implementation(libs.compose.ui)
     implementation(libs.compose.ui.graphics)
