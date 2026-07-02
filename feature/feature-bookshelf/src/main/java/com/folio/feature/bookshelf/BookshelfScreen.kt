@@ -224,9 +224,10 @@ fun BookshelfScreen(
                                 modifier = Modifier.fillMaxWidth()
                             ) {
                                 Text(shelf.name)
-                            }
-                        }
-                    }
+        }
+    }
+}
+
                     HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
                     TextButton(
                         onClick = {
@@ -594,4 +595,6 @@ private fun EmptyLibraryState(importLauncher: androidx.activity.result.ActivityR
             }
         }
     }
+}
+
 }

@@ -293,7 +293,7 @@ fun ReaderScreen(
                     while (!hasTriggeredFallback) {
                         delay(500)
                         val currentFrameTime = withFrameNanos { it }
-                        val fps = 1_000_000_000f / (currentFrameTime - lastFrameTime).coerceAtLeast(1f)
+                        val fps = 1_000_000_000f / (currentFrameTime - lastFrameTime).coerceAtLeast(1L)
                         lastFrameTime = currentFrameTime
 
                         if (fps < 30f) {
