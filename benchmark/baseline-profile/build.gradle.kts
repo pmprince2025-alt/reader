@@ -15,5 +15,5 @@ android {
 }
 
 dependencies {
-    implementation("androidx.benchmark:benchmark-baseline-profile:1.3.1")
+    implementation("androidx.benchmark:benchmark-macro-junit4:1.3.1")
 }
