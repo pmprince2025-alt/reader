@@ -26,9 +26,9 @@ import kotlinx.serialization.Serializable
 fun FolioNavGraph(
     navController: NavHostController = rememberNavController()
 ) {
-    val pendingUri = MainActivity.PendingImport.uri
+    val pendingUri = PendingImport.uri
     if (pendingUri != null) {
-        MainActivity.PendingImport.uri = null
+        PendingImport.uri = null
     }
 
     NavHost(

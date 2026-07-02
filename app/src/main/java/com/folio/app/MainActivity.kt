@@ -56,9 +56,4 @@ class MainActivity : ComponentActivity() {
         }
     }
 
-    companion object {
-        object PendingImport {
-            var uri: Uri? = null
-        }
-    }
 }

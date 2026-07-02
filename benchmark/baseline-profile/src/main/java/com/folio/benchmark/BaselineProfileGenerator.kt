@@ -1,6 +1,6 @@
 package com.folio.benchmark
 
-import androidx.benchmark.baselineprofile.BaselineProfileRule
+import androidx.benchmark.macro.junit4.BaselineProfileRule
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.filters.LargeTest
 import androidx.test.uiautomator.By
