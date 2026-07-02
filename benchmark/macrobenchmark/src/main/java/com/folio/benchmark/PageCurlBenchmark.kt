@@ -1,6 +1,5 @@
 package com.folio.benchmark
 
-import androidx.benchmark.macro.BaselineProfileMode
 import androidx.benchmark.macro.CompilationMode
 import androidx.benchmark.macro.FrameTimingMetric
 import androidx.benchmark.macro.junit4.MacrobenchmarkRule
@@ -26,7 +25,6 @@ class PageCurlBenchmark {
             packageName = "com.folio.app",
             metrics = listOf(FrameTimingMetric()),
             compilationMode = CompilationMode.Partial(),
-            baselineProfileMode = BaselineProfileMode.Require,
             iterations = 10
         ) {
             pressHome()
