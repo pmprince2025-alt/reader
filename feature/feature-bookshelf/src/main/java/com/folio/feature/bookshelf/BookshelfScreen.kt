@@ -131,11 +131,12 @@ fun BookshelfScreen(
         }
 
         if (state.books.isNotEmpty() || state.searchQuery.isNotBlank()) {
-            FloatingActionButton(
-                onClick = { importLauncher.launch(arrayOf("application/pdf")) },
-                modifier = Modifier
-                    .align(Alignment.BottomEnd)
-                    .padding(screenMargin()),
+            Box(modifier = Modifier.fillMaxWidth()) {
+                FloatingActionButton(
+                    onClick = { importLauncher.launch(arrayOf("application/pdf")) },
+                    modifier = Modifier
+                        .align(Alignment.BottomEnd)
+                        .padding(screenMargin()),
                 containerColor = MaterialTheme.colorScheme.primary
             ) {
                 Icon(Icons.Filled.Add, contentDescription = "Import PDF")
@@ -311,8 +312,10 @@ fun BookshelfScreen(
     }
 }
 
+}
+
 @Composable
-private fun BookshelfContent(
+fun BookshelfContent(
     state: BookshelfUiState,
     onBookClick: (Long) -> Unit,
     onSortOptionChange: (SortOption) -> Unit,
@@ -473,7 +476,7 @@ private fun BookshelfContent(
 
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
-private fun BookGridItem(
+fun BookGridItem(
     book: BookEntity,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
@@ -510,7 +513,7 @@ private fun BookGridItem(
 
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
-private fun ShelfListItem(
+fun ShelfListItem(
     book: BookEntity,
     onClick: () -> Unit,
     onLongClick: (BookEntity) -> Unit = {}
@@ -562,7 +565,7 @@ private fun ShelfListItem(
 }
 
 @Composable
-private fun EmptyLibraryState(importLauncher: androidx.activity.result.ActivityResultLauncher<Array<String>>) {
+fun EmptyLibraryState(importLauncher: androidx.activity.result.ActivityResultLauncher<Array<String>>) {
     Box(
         modifier = Modifier.fillMaxSize(),
         contentAlignment = Alignment.Center
@@ -595,6 +598,4 @@ private fun EmptyLibraryState(importLauncher: androidx.activity.result.ActivityR
             }
         }
     }
-}
-
 }

@@ -97,8 +97,9 @@ fun BookDetailScreen(
                     if (book.fileSize > 0) {
                         append(" · ${book.fileSize / 1024}KB")
                     }
-                    if (book.lastOpened != null) {
-                        append(" · Last opened ${dateFormat.format(Date(book.lastOpened))}")
+                    val lastOpened = book.lastOpened
+                    if (lastOpened != null) {
+                        append(" · Last opened ${dateFormat.format(Date(lastOpened))}")
                     }
                 },
                 style = MaterialTheme.typography.bodyMedium,

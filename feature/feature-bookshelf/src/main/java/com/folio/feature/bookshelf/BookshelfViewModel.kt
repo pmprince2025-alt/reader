@@ -35,6 +35,13 @@ data class BookshelfUiState(
     val importError: String? = null
 )
 
+data class LocalBookshelfState(
+    val isGridView: Boolean = true,
+    val searchQuery: String = "",
+    val isImporting: Boolean = false,
+    val recentProgress: Map<Long, Int> = emptyMap()
+)
+
 enum class SortOption { TITLE, DATE_ADDED, LAST_OPENED, FILE_SIZE }
 
 @HiltViewModel
@@ -68,6 +75,12 @@ class BookshelfViewModel @Inject constructor(
         }
     }
 
+    private val _localState = combine(
+        _isGridView, _searchQuery, _isImporting, _recentProgress
+    ) { isGrid, query, importing, progress ->
+        LocalBookshelfState(isGrid, query, importing, progress)
+    }
+
     val uiState: StateFlow<BookshelfUiState> = combine(
         _sortOption.flatMapLatest { option ->
             when (option) {
@@ -79,23 +92,20 @@ class BookshelfViewModel @Inject constructor(
         },
         shelfDao.getAllShelves(),
         bookDao.getRecentlyOpened(),
-        _isGridView,
-        _searchQuery,
-        _isImporting,
-        _recentProgress
-    ) { books, shelves, recent, isGrid, query, importing, progress ->
-        val filtered = if (query.isBlank()) books
-        else books.filter { it.title.contains(query, ignoreCase = true) }
+        _localState
+    ) { books, shelves, recent, local ->
+        val filtered = if (local.searchQuery.isBlank()) books
+        else books.filter { it.title.contains(local.searchQuery, ignoreCase = true) }
         BookshelfUiState(
             books = filtered,
             shelves = shelves,
             recentlyOpened = recent,
-            recentProgress = progress,
+            recentProgress = local.recentProgress,
             sortOption = _sortOption.value,
-            isGridView = isGrid,
-            searchQuery = query,
+            isGridView = local.isGridView,
+            searchQuery = local.searchQuery,
             isLoading = false,
-            isImporting = importing,
+            isImporting = local.isImporting,
             importError = _importError.value
         )
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), BookshelfUiState())
