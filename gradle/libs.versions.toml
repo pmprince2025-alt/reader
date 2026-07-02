@@ -41,7 +41,7 @@ coil-compose = { module = "io.coil-kt.coil3:coil-compose", version.ref = "coil" 
 lifecycle-runtime-compose = { module = "androidx.lifecycle:lifecycle-runtime-compose", version.ref = "lifecycle" }
 lifecycle-viewmodel-compose = { module = "androidx.lifecycle:lifecycle-viewmodel-compose", version.ref = "lifecycle" }
 coroutines-android = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-android", version.ref = "coroutines" }
-pdfium-android = { module = "com.github.barteksc:android-pdf-viewer", version.ref = "pdfium" }
+pdfium-android = { module = "com.github.barteksc:pdfium-android", version.ref = "pdfium" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }
