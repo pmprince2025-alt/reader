@@ -33,13 +33,14 @@ class UpdateManager @Inject constructor(
     private val repoApi = "https://api.github.com/repos/pmprince2025-alt/reader/releases/latest"
     private var downloadedApk: File? = null
 
-    fun getCurrentVersion(): String {
-        return try {
-            context.packageManager.getPackageInfo(context.packageName, 0).versionName ?: "1.0.0"
-        } catch (e: Exception) {
-            "1.0.0"
+    val currentVersion: String
+        get() {
+            return try {
+                context.packageManager.getPackageInfo(context.packageName, 0).versionName ?: "1.0.0"
+            } catch (e: Exception) {
+                "1.0.0"
+            }
         }
-    }
 
     suspend fun checkForUpdate(): UpdateState = withContext(Dispatchers.IO) {
         try {
