@@ -66,9 +66,12 @@ class ReaderViewModel @Inject constructor(
     private var screenHeight = 1440
 
     init {
+        @Suppress("DEPRECATION")
         val wm = context.getSystemService(Context.WINDOW_SERVICE) as? WindowManager
+        @Suppress("DEPRECATION")
         val display = wm?.defaultDisplay
         val size = Point()
+        @Suppress("DEPRECATION")
         display?.getRealSize(size)
         screenWidth = size.x.coerceAtLeast(1080)
         screenHeight = size.y.coerceAtLeast(1440)

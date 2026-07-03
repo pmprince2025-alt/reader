@@ -169,31 +169,32 @@ fun BookDetailScreen(
     }
 
     if (showShelfSheet) {
-        ModalBottomSheet(
-            onDismissRequest = { showShelfSheet = false },
-            containerColor = MaterialTheme.colorScheme.surface
-        ) {
-            Column(modifier = Modifier.padding(24.dp)) {
-                Text(
-                    "Add to Shelf",
-                    style = MaterialTheme.typography.titleLarge,
-                    modifier = Modifier.padding(bottom = 16.dp)
-                )
-
-                if (state.shelves.isEmpty()) {
+        book?.let { b ->
+            ModalBottomSheet(
+                onDismissRequest = { showShelfSheet = false },
+                containerColor = MaterialTheme.colorScheme.surface
+            ) {
+                Column(modifier = Modifier.padding(24.dp)) {
                     Text(
-                        "No shelves yet. Create one below.",
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.padding(vertical = 16.dp)
+                        "Add to Shelf",
+                        style = MaterialTheme.typography.titleLarge,
+                        modifier = Modifier.padding(bottom = 16.dp)
                     )
-                } else {
-                    state.shelves.forEach { shelf ->
-                        val isInShelf = false // For simplicity we always show add option
-                        Surface(
-                            onClick = {
-                                viewModel.addBookToShelf(book.id, shelf.id)
-                            },
+
+                    if (state.shelves.isEmpty()) {
+                        Text(
+                            "No shelves yet. Create one below.",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.padding(vertical = 16.dp)
+                        )
+                    } else {
+                        state.shelves.forEach { shelf ->
+                            val isInShelf = false // For simplicity we always show add option
+                            Surface(
+                                onClick = {
+                                    viewModel.addBookToShelf(b.id, shelf.id)
+                                },
                             modifier = Modifier.fillMaxWidth().padding(vertical = 2.dp),
                             shape = RoundedCornerShape(8.dp),
                             color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
@@ -222,6 +223,7 @@ fun BookDetailScreen(
                     Text("Create New Shelf")
                 }
             }
+        }
         }
     }
 
@@ -255,24 +257,26 @@ fun BookDetailScreen(
     }
 
     if (showDeleteConfirm) {
-        AlertDialog(
-            onDismissRequest = { showDeleteConfirm = false },
-            title = { Text("Delete Book") },
-            text = { Text("Are you sure you want to delete \"${book.title}\"? This cannot be undone.") },
-            confirmButton = {
-                TextButton(
-                    onClick = {
-                        showDeleteConfirm = false
-                        viewModel.deleteBook(book)
-                        onBackClick()
-                    },
-                    colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error)
-                ) { Text("Delete") }
-            },
-            dismissButton = {
-                TextButton(onClick = { showDeleteConfirm = false }) { Text("Cancel") }
-            }
-        )
+        book?.let { b ->
+            AlertDialog(
+                onDismissRequest = { showDeleteConfirm = false },
+                title = { Text("Delete Book") },
+                text = { Text("Are you sure you want to delete \"${b.title}\"? This cannot be undone.") },
+                confirmButton = {
+                    TextButton(
+                        onClick = {
+                            showDeleteConfirm = false
+                            viewModel.deleteBook(b)
+                            onBackClick()
+                        },
+                        colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error)
+                    ) { Text("Delete") }
+                },
+                dismissButton = {
+                    TextButton(onClick = { showDeleteConfirm = false }) { Text("Cancel") }
+                }
+            )
+        }
     }
 }
 
