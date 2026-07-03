@@ -52,13 +52,13 @@ class PdfiumEngine(private val context: Context? = null) : PdfPageRenderer {
             val safeHeight = height.coerceIn(100, 4096)
             val pixelCount = safeWidth.toLong() * safeHeight.toLong()
             if (pixelCount > 8_000_000L) {
-                val inSampleSize = kotlin.math.ceil(
+                val sampleSize = kotlin.math.ceil(
                     kotlin.math.sqrt(pixelCount.toDouble() / 4_000_000.0)
                 ).toInt().coerceAtLeast(1)
-                val sampledWidth = safeWidth / inSampleSize
-                val sampledHeight = safeHeight / inSampleSize
+                val sampledWidth = safeWidth / sampleSize
+                val sampledHeight = safeHeight / sampleSize
                 val bytes = document.renderPage(pageIndex, sampledWidth, sampledHeight) ?: return@withContext null
-                val options = BitmapFactory.Options().apply { inSampleSize = inSampleSize }
+                val options = BitmapFactory.Options().apply { inSampleSize = sampleSize }
                 BitmapFactory.decodeByteArray(bytes, 0, bytes.size, options)
             } else {
                 val bytes = document.renderPage(pageIndex, safeWidth, safeHeight) ?: return@withContext null
