@@ -216,7 +216,7 @@ fun ReaderScreen(
                             },
                             actions = {
                                 IconButton(onClick = { showTocSheet = true }) {
-                                    Icon(Icons.AutoMirrored.Filled.List, "Table of Contents")
+                                    @Suppress("DEPRECATION") Icon(Icons.Filled.List, "Table of Contents")
                                 }
                                 IconButton(onClick = { viewModel.toggleBookmark(); viewModel.refreshBookmarkState() }) {
                                     Icon(
