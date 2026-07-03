@@ -19,6 +19,9 @@ class PdfiumEngine(private val context: Context? = null) : PdfPageRenderer {
             if (!file.exists()) return@withContext null
             val pfd = ParcelFileDescriptor.open(file, ParcelFileDescriptor.MODE_READ_ONLY)
             PdfiumNativeDocumentSource(pfd, filePath, pdfiumCore)
+        } catch (e: SecurityException) {
+            e.printStackTrace()
+            null
         } catch (e: Exception) {
             e.printStackTrace()
             null
@@ -45,8 +48,25 @@ class PdfiumEngine(private val context: Context? = null) : PdfPageRenderer {
     ): Bitmap? = withContext(Dispatchers.IO) {
         try {
             if (document !is PdfiumNativeDocumentSource) return@withContext null
-            val bytes = document.renderPage(pageIndex, width, height) ?: return@withContext null
-            BitmapFactory.decodeByteArray(bytes, 0, bytes.size)
+            val safeWidth = width.coerceIn(100, 4096)
+            val safeHeight = height.coerceIn(100, 4096)
+            val pixelCount = safeWidth.toLong() * safeHeight.toLong()
+            if (pixelCount > 8_000_000L) {
+                val inSampleSize = kotlin.math.ceil(
+                    kotlin.math.sqrt(pixelCount.toDouble() / 4_000_000.0)
+                ).toInt().coerceAtLeast(1)
+                val sampledWidth = safeWidth / inSampleSize
+                val sampledHeight = safeHeight / inSampleSize
+                val bytes = document.renderPage(pageIndex, sampledWidth, sampledHeight) ?: return@withContext null
+                val options = BitmapFactory.Options().apply { inSampleSize = inSampleSize }
+                BitmapFactory.decodeByteArray(bytes, 0, bytes.size, options)
+            } else {
+                val bytes = document.renderPage(pageIndex, safeWidth, safeHeight) ?: return@withContext null
+                BitmapFactory.decodeByteArray(bytes, 0, bytes.size)
+            }
+        } catch (e: OutOfMemoryError) {
+            System.gc()
+            null
         } catch (e: Exception) {
             e.printStackTrace()
             null

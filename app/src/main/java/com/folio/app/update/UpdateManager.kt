@@ -1,9 +1,7 @@
 package com.folio.app.update
 
-import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
-import android.content.pm.PackageManager
 import android.net.Uri
 import android.os.Build
 import androidx.core.content.FileProvider
@@ -36,8 +34,9 @@ class UpdateManager @Inject constructor(
     val currentVersion: String
         get() {
             return try {
-                context.packageManager.getPackageInfo(context.packageName, 0).versionName ?: "1.0.0"
-            } catch (e: Exception) {
+                val pkg = context.packageManager.getPackageInfo(context.packageName, 0)
+                pkg.versionName ?: "1.0.0"
+            } catch (_: Exception) {
                 "1.0.0"
             }
         }
@@ -46,8 +45,8 @@ class UpdateManager @Inject constructor(
         try {
             val conn = URL(repoApi).openConnection() as HttpURLConnection
             conn.setRequestProperty("Accept", "application/vnd.github.v3+json")
-            conn.connectTimeout = 10000
-            conn.readTimeout = 10000
+            conn.connectTimeout = 15000
+            conn.readTimeout = 15000
 
             if (conn.responseCode == 404) {
                 return@withContext UpdateState(isAvailable = false, updateInfo = null)
@@ -56,7 +55,7 @@ class UpdateManager @Inject constructor(
                 return@withContext UpdateState(errorMessage = "Update check failed (${conn.responseCode})")
             }
 
-            val response = conn.inputStream.bufferedReader().readText()
+            val response = conn.inputStream.bufferedReader(charset = Charsets.UTF_8).readText()
             val info = UpdateParser.parseRelease(response)
 
             if (info == null) {
@@ -79,27 +78,29 @@ class UpdateManager @Inject constructor(
         try {
             val url = URL(info.downloadUrl)
             val conn = url.openConnection() as HttpURLConnection
+            conn.connectTimeout = 30000
+            conn.readTimeout = 30000
             conn.connect()
             val totalLength = conn.contentLengthLong
-            val inputStream = conn.inputStream
-            val file = File(context.cacheDir, "folio_update.apk")
-            file.deleteOnExit()
-
-            FileOutputStream(file).use { output ->
-                val buffer = ByteArray(8192)
-                var bytesRead: Int
-                var totalRead = 0L
-                while (inputStream.read(buffer).also { bytesRead = it } != -1) {
-                    output.write(buffer, 0, bytesRead)
-                    totalRead += bytesRead
-                    if (totalLength > 0) {
-                        onProgress(totalRead.toFloat() / totalLength)
+            conn.inputStream.use { inputStream ->
+                val file = File(context.cacheDir, "folio_update.apk")
+                file.deleteOnExit()
+                FileOutputStream(file).use { output ->
+                    val buffer = ByteArray(8192)
+                    var totalRead = 0L
+                    for (bytesRead in generateSequence { inputStream.read(buffer) }.takeWhile { it != -1 }) {
+                        output.write(buffer, 0, bytesRead)
+                        totalRead += bytesRead
+                        if (totalLength > 0) {
+                            onProgress(totalRead.toFloat() / totalLength)
+                        }
                     }
                 }
+                downloadedApk = file
+                file
             }
-            downloadedApk = file
-            file
         } catch (e: Exception) {
+            e.printStackTrace()
             null
         }
     }

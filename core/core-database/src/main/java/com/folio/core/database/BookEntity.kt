@@ -17,5 +17,6 @@ data class BookEntity(
     val lastOpened: Long? = null,
     val isCorrupted: Boolean = false,
     val isPasswordProtected: Boolean = false,
+    val isFavorite: Boolean = false,
     val contentHash: String? = null
 )

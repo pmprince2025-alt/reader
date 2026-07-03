@@ -1,5 +1,7 @@
 package com.folio.feature.bookshelf
 
+import android.content.Context
+import android.content.Intent
 import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -12,20 +14,13 @@ import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.Close
-import androidx.compose.material.icons.filled.Search
-import androidx.compose.material.icons.filled.Settings
-import androidx.compose.material.icons.filled.ChevronRight
-import androidx.compose.material.icons.filled.Delete
-import androidx.compose.material.icons.filled.Edit
-import androidx.compose.material.icons.filled.Folder
-import androidx.compose.material.icons.filled.Info
+import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -39,7 +34,6 @@ import com.folio.core.ui.theme.screenMargin
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)
 @Composable
 fun BookshelfScreen(
-    pendingImportUri: Uri? = null,
     onBookClick: (Long) -> Unit,
     onSettingsClick: () -> Unit,
     viewModel: BookshelfViewModel = hiltViewModel()
@@ -52,10 +46,7 @@ fun BookshelfScreen(
     var showRenameDialog by remember { mutableStateOf(false) }
     var pendingBookForShelf by remember { mutableLongStateOf(0L) }
     var pendingRenameBook by remember { mutableStateOf<BookEntity?>(null) }
-
-    LaunchedEffect(pendingImportUri) {
-        pendingImportUri?.let { viewModel.importUri(it) }
-    }
+    val context = LocalContext.current
 
     val importLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.OpenMultipleDocuments()
@@ -65,171 +56,243 @@ fun BookshelfScreen(
 
     Box(modifier = Modifier.fillMaxSize()) {
         Column(modifier = Modifier.fillMaxSize()) {
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            FolioTopBar(
-                title = "Folio",
-                isGridView = state.isGridView,
-                onViewToggle = { viewModel.toggleView() },
-                onSearchClick = { showSearch = !showSearch },
-                modifier = Modifier.weight(1f)
-            )
-            IconButton(onClick = onSettingsClick) {
-                Icon(Icons.Filled.Settings, contentDescription = "Settings")
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                FolioTopBar(
+                    title = "Folio",
+                    isGridView = state.isGridView,
+                    onViewToggle = { viewModel.toggleView() },
+                    onSearchClick = { showSearch = !showSearch },
+                    modifier = Modifier.weight(1f)
+                )
+                IconButton(onClick = onSettingsClick) {
+                    Icon(Icons.Filled.Settings, contentDescription = "Settings")
+                }
             }
-        }
 
-        AnimatedVisibility(visible = showSearch) {
-            OutlinedTextField(
-                value = state.searchQuery,
-                onValueChange = { viewModel.updateSearch(it) },
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 16.dp, vertical = 8.dp),
-                placeholder = { Text("Search your library...") },
-                leadingIcon = { Icon(Icons.Filled.Search, contentDescription = null) },
-                trailingIcon = {
-                    if (state.searchQuery.isNotEmpty()) {
-                        IconButton(onClick = { viewModel.updateSearch("") }) {
-                            Icon(Icons.Filled.Close, contentDescription = "Clear")
+            AnimatedVisibility(visible = showSearch) {
+                OutlinedTextField(
+                    value = state.searchQuery,
+                    onValueChange = { viewModel.updateSearch(it) },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp, vertical = 8.dp),
+                    placeholder = { Text("Search your library...") },
+                    leadingIcon = { Icon(Icons.Filled.Search, contentDescription = null) },
+                    trailingIcon = {
+                        if (state.searchQuery.isNotEmpty()) {
+                            IconButton(onClick = { viewModel.updateSearch("") }) {
+                                Icon(Icons.Filled.Close, contentDescription = "Clear")
+                            }
                         }
-                    }
-                },
-                singleLine = true,
-                shape = RoundedCornerShape(12.dp)
-            )
-        }
-
-        when {
-            state.isLoading -> {
-                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                    CircularProgressIndicator()
-                }
-            }
-            state.isImporting -> {
-                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                        CircularProgressIndicator()
-                        Spacer(modifier = Modifier.height(16.dp))
-                        Text("Importing PDFs...", style = MaterialTheme.typography.bodyMedium)
-                    }
-                }
-            }
-            state.books.isEmpty() && state.searchQuery.isBlank() -> {
-                EmptyLibraryState(importLauncher)
-            }
-            else -> {
-                BookshelfContent(
-                    state = state,
-                    onBookClick = onBookClick,
-                    onSortOptionChange = { viewModel.setSortOption(it) },
-                    onLongClick = { longPressedBook = it }
+                    },
+                    singleLine = true,
+                    shape = RoundedCornerShape(12.dp)
                 )
             }
+
+            when {
+                state.isLoading -> {
+                    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                        CircularProgressIndicator()
+                    }
+                }
+                state.isImporting -> {
+                    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                            CircularProgressIndicator()
+                            Spacer(modifier = Modifier.height(16.dp))
+                            Text("Importing PDFs...", style = MaterialTheme.typography.bodyMedium)
+                        }
+                    }
+                }
+                state.books.isEmpty() && state.searchQuery.isBlank() -> {
+                    EmptyLibraryState(importLauncher, viewModel)
+                }
+                else -> {
+                    BookshelfContent(
+                        state = state,
+                    onBookClick = onBookClick,
+                    onSortOptionChange = { viewModel.setSortOption(it) },
+                    onFavoritesToggle = { viewModel.toggleFavoritesOnly() },
+                    onLongClick = { longPressedBook = it }
+                    )
+                }
+            }
         }
 
+        // FAB - outside Column so it overlays properly
         if (state.books.isNotEmpty() || state.searchQuery.isNotBlank()) {
-            Box(modifier = Modifier.fillMaxWidth()) {
-                FloatingActionButton(
-                    onClick = { importLauncher.launch(arrayOf("application/pdf")) },
-                    modifier = Modifier
-                        .align(Alignment.BottomEnd)
-                        .padding(screenMargin()),
+            FloatingActionButton(
+                onClick = { importLauncher.launch(arrayOf("application/pdf")) },
+                modifier = Modifier
+                    .align(Alignment.BottomEnd)
+                    .padding(screenMargin())
+                    .padding(bottom = 16.dp),
                 containerColor = MaterialTheme.colorScheme.primary
             ) {
                 Icon(Icons.Filled.Add, contentDescription = "Import PDF")
             }
         }
-    }
 
-    // Long-press context sheet
-    longPressedBook?.let { book ->
-        ModalBottomSheet(
-            onDismissRequest = { longPressedBook = null },
-            containerColor = MaterialTheme.colorScheme.surface
-        ) {
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(24.dp)
+        // Delete confirmation dialog
+        state.showDeleteConfirm?.let { book ->
+            AlertDialog(
+                onDismissRequest = { viewModel.cancelDelete() },
+                title = { Text("Delete Book") },
+                text = { Text("Are you sure you want to delete \"${book.title}\"? This cannot be undone.") },
+                confirmButton = {
+                    TextButton(
+                        onClick = { viewModel.confirmDelete() },
+                        colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error)
+                    ) { Text("Delete") }
+                },
+                dismissButton = {
+                    TextButton(onClick = { viewModel.cancelDelete() }) { Text("Cancel") }
+                }
+            )
+        }
+
+        // Long-press context sheet
+        longPressedBook?.let { book ->
+            ModalBottomSheet(
+                onDismissRequest = { longPressedBook = null },
+                containerColor = MaterialTheme.colorScheme.surface
             ) {
-                Text(
-                    text = book.title,
-                    style = MaterialTheme.typography.titleLarge,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                    modifier = Modifier.padding(bottom = 16.dp)
-                )
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(24.dp)
+                ) {
+                    Text(
+                        text = book.title,
+                        style = MaterialTheme.typography.titleLarge,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                        modifier = Modifier.padding(bottom = 16.dp)
+                    )
 
-                ListItem(
-                    headlineContent = { Text("Move to Shelf") },
-                    leadingContent = { Icon(Icons.Filled.Folder, contentDescription = null) },
-                    modifier = Modifier.combinedClickable(
-                        onClick = {
-                            showShelfPicker = true
-                            pendingBookForShelf = book.id
-                        }
+                    ListItem(
+                        headlineContent = { Text("Open") },
+                        leadingContent = { Icon(Icons.Filled.Book, contentDescription = null) },
+                        modifier = Modifier.combinedClickable(
+                            onClick = {
+                                longPressedBook = null
+                                onBookClick(book.id)
+                            }
+                        )
                     )
-                )
-                ListItem(
-                    headlineContent = { Text("Rename") },
-                    leadingContent = { Icon(Icons.Filled.Edit, contentDescription = null) },
-                    modifier = Modifier.combinedClickable(
-                        onClick = {
-                            showRenameDialog = true
-                            pendingRenameBook = book
-                        }
+                    ListItem(
+                        headlineContent = { Text("Move to Shelf") },
+                        leadingContent = { Icon(Icons.Filled.Folder, contentDescription = null) },
+                        modifier = Modifier.combinedClickable(
+                            onClick = {
+                                showShelfPicker = true
+                                pendingBookForShelf = book.id
+                            }
+                        )
                     )
-                )
-                ListItem(
-                    headlineContent = { Text("Details") },
-                    leadingContent = { Icon(Icons.Filled.Info, contentDescription = null) },
-                    modifier = Modifier.combinedClickable(
-                        onClick = { longPressedBook = null }
+                    ListItem(
+                        headlineContent = { Text("Rename") },
+                        leadingContent = { Icon(Icons.Filled.Edit, contentDescription = null) },
+                        modifier = Modifier.combinedClickable(
+                            onClick = {
+                                showRenameDialog = true
+                                pendingRenameBook = book
+                            }
+                        )
                     )
-                )
-                ListItem(
-                    headlineContent = { Text("Delete") },
-                    leadingContent = { Icon(Icons.Filled.Delete, contentDescription = null) },
-                    modifier = Modifier.combinedClickable(
-                        onClick = {
-                            viewModel.deleteBook(book)
-                            longPressedBook = null
-                        }
+                    ListItem(
+                        headlineContent = { Text("Share") },
+                        leadingContent = { Icon(Icons.Filled.Share, contentDescription = null) },
+                        modifier = Modifier.combinedClickable(
+                            onClick = {
+                                longPressedBook = null
+                                shareBook(context, book)
+                            }
+                        )
                     )
-                )
-                Spacer(modifier = Modifier.height(24.dp))
+                    ListItem(
+                        headlineContent = {
+                            Text(if (book.isFavorite) "Remove from Favorites" else "Add to Favorites")
+                        },
+                        leadingContent = {
+                            Icon(
+                                if (book.isFavorite) Icons.Filled.Favorite else Icons.Filled.FavoriteBorder,
+                                contentDescription = null,
+                                tint = if (book.isFavorite) MaterialTheme.colorScheme.tertiary else MaterialTheme.colorScheme.onSurface
+                            )
+                        },
+                        modifier = Modifier.combinedClickable(
+                            onClick = {
+                                viewModel.toggleFavorite(book)
+                                longPressedBook = null
+                            }
+                        )
+                    )
+                    ListItem(
+                        headlineContent = { Text("Delete") },
+                        leadingContent = { Icon(Icons.Filled.Delete, contentDescription = null) },
+                        modifier = Modifier.combinedClickable(
+                            onClick = {
+                                longPressedBook = null
+                                viewModel.requestDelete(book)
+                            }
+                        )
+                    )
+                    Spacer(modifier = Modifier.height(24.dp))
+                }
             }
         }
-    }
 
-    // Shelf picker dialog
-    if (showShelfPicker) {
-        AlertDialog(
-            onDismissRequest = { showShelfPicker = false },
-            title = { Text("Move to Shelf") },
-            text = {
-                Column {
+        // Shelf picker bottom sheet
+        if (showShelfPicker) {
+            ModalBottomSheet(
+                onDismissRequest = { showShelfPicker = false },
+                containerColor = MaterialTheme.colorScheme.surface
+            ) {
+                Column(modifier = Modifier.padding(24.dp)) {
+                    Text(
+                        "Move to Shelf",
+                        style = MaterialTheme.typography.titleLarge,
+                        modifier = Modifier.padding(bottom = 16.dp)
+                    )
+
                     if (state.shelves.isEmpty()) {
-                        Text("No shelves yet. Create one first.")
+                        Text(
+                            "No shelves yet. Create one below.",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.padding(vertical = 16.dp)
+                        )
                     } else {
                         state.shelves.forEach { shelf ->
-                            TextButton(
+                            Surface(
                                 onClick = {
                                     viewModel.addBookToShelf(pendingBookForShelf, shelf.id)
                                     showShelfPicker = false
                                     longPressedBook = null
                                 },
-                                modifier = Modifier.fillMaxWidth()
+                                modifier = Modifier.fillMaxWidth().padding(vertical = 2.dp),
+                                shape = RoundedCornerShape(8.dp),
+                                color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
                             ) {
-                                Text(shelf.name)
-        }
-    }
-}
+                                Row(
+                                    modifier = Modifier.padding(12.dp),
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Icon(Icons.Filled.Folder, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
+                                    Spacer(Modifier.width(12.dp))
+                                    Text(shelf.name, style = MaterialTheme.typography.bodyLarge, modifier = Modifier.weight(1f))
+                                }
+                            }
+                        }
+                    }
 
-                    HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
+                    HorizontalDivider(modifier = Modifier.padding(vertical = 12.dp))
+
                     TextButton(
                         onClick = {
                             showShelfPicker = false
@@ -239,80 +302,74 @@ fun BookshelfScreen(
                     ) {
                         Icon(Icons.Filled.Add, contentDescription = null)
                         Spacer(Modifier.width(8.dp))
-                        Text("New Shelf")
+                        Text("Create New Shelf")
                     }
                 }
-            },
-            confirmButton = {
-                TextButton(onClick = { showShelfPicker = false }) { Text("Close") }
             }
-        )
-    }
+        }
 
-    // Create shelf dialog
-    if (showCreateShelfDialog) {
-        var shelfName by remember { mutableStateOf("") }
-        AlertDialog(
-            onDismissRequest = { showCreateShelfDialog = false },
-            title = { Text("New Shelf") },
-            text = {
-                OutlinedTextField(
-                    value = shelfName,
-                    onValueChange = { shelfName = it },
-                    label = { Text("Shelf name") },
-                    singleLine = true
-                )
-            },
-            confirmButton = {
-                TextButton(
-                    onClick = {
-                        if (shelfName.isNotBlank()) {
-                            viewModel.createShelf(shelfName)
-                            showCreateShelfDialog = false
+        // Create shelf dialog
+        if (showCreateShelfDialog) {
+            var shelfName by remember { mutableStateOf("") }
+            AlertDialog(
+                onDismissRequest = { showCreateShelfDialog = false },
+                title = { Text("New Shelf") },
+                text = {
+                    OutlinedTextField(
+                        value = shelfName,
+                        onValueChange = { shelfName = it },
+                        label = { Text("Shelf name") },
+                        singleLine = true
+                    )
+                },
+                confirmButton = {
+                    TextButton(
+                        onClick = {
+                            if (shelfName.isNotBlank()) {
+                                viewModel.createShelf(shelfName)
+                                showCreateShelfDialog = false
+                            }
                         }
-                    }
-                ) { Text("Create") }
-            },
-            dismissButton = {
-                TextButton(onClick = { showCreateShelfDialog = false }) { Text("Cancel") }
-            }
-        )
-    }
+                    ) { Text("Create") }
+                },
+                dismissButton = {
+                    TextButton(onClick = { showCreateShelfDialog = false }) { Text("Cancel") }
+                }
+            )
+        }
 
-    // Rename dialog
-    if (showRenameDialog && pendingRenameBook != null) {
-        var newName by remember { mutableStateOf(pendingRenameBook?.title ?: "") }
-        AlertDialog(
-            onDismissRequest = { showRenameDialog = false },
-            title = { Text("Rename") },
-            text = {
-                OutlinedTextField(
-                    value = newName,
-                    onValueChange = { newName = it },
-                    label = { Text("Book title") },
-                    singleLine = true
-                )
-            },
-            confirmButton = {
-                TextButton(
-                    onClick = {
-                        if (newName.isNotBlank()) {
-                            viewModel.renameBook(pendingRenameBook!!.id, newName)
-                            showRenameDialog = false
-                            longPressedBook = null
-                            pendingRenameBook = null
+        // Rename dialog
+        if (showRenameDialog && pendingRenameBook != null) {
+            var newName by remember { mutableStateOf(pendingRenameBook?.title ?: "") }
+            AlertDialog(
+                onDismissRequest = { showRenameDialog = false },
+                title = { Text("Rename") },
+                text = {
+                    OutlinedTextField(
+                        value = newName,
+                        onValueChange = { newName = it },
+                        label = { Text("Book title") },
+                        singleLine = true
+                    )
+                },
+                confirmButton = {
+                    TextButton(
+                        onClick = {
+                            if (newName.isNotBlank()) {
+                                viewModel.renameBook(pendingRenameBook!!.id, newName)
+                                showRenameDialog = false
+                                longPressedBook = null
+                                pendingRenameBook = null
+                            }
                         }
-                    }
-                ) { Text("Save") }
-            },
-            dismissButton = {
-                TextButton(onClick = { showRenameDialog = false }) { Text("Cancel") }
-            }
-        )
+                    ) { Text("Save") }
+                },
+                dismissButton = {
+                    TextButton(onClick = { showRenameDialog = false }) { Text("Cancel") }
+                }
+            )
+        }
     }
-}
-
-}
 }
 
 @Composable
@@ -320,11 +377,12 @@ fun BookshelfContent(
     state: BookshelfUiState,
     onBookClick: (Long) -> Unit,
     onSortOptionChange: (SortOption) -> Unit,
+    onFavoritesToggle: () -> Unit = {},
     onLongClick: (BookEntity) -> Unit = {}
 ) {
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
-        contentPadding = PaddingValues(bottom = 16.dp)
+        contentPadding = PaddingValues(bottom = 80.dp)
     ) {
         item {
             Row(
@@ -350,8 +408,17 @@ fun BookshelfContent(
                         }
                     )
                 }
+                FilterChip(
+                    selected = state.favoritesOnly,
+                    onClick = onFavoritesToggle,
+                    label = { Text("Favorites", style = MaterialTheme.typography.labelSmall) },
+                    leadingIcon = if (state.favoritesOnly) {
+                        { Icon(Icons.Filled.Favorite, contentDescription = null, modifier = Modifier.size(16.dp)) }
+                    } else null
+                )
             }
         }
+
         if (state.recentlyOpened.isNotEmpty()) {
             item {
                 Text(
@@ -386,13 +453,13 @@ fun BookshelfContent(
                                 }
                                 val currentPage = state.recentProgress[book.id] ?: 0
                                 if (currentPage > 0 && book.pageCount > 0) {
-                                    CircularProgressIndicator(
-                                        progress = currentPage.toFloat() / book.pageCount,
+                                    val progress = currentPage.toFloat() / book.pageCount
+                                    LinearProgressIndicator(
+                                        progress = progress,
                                         modifier = Modifier
-                                            .align(Alignment.BottomEnd)
-                                            .padding(8.dp)
-                                            .size(24.dp),
-                                        strokeWidth = 2.dp,
+                                            .fillMaxWidth()
+                                            .align(Alignment.BottomCenter)
+                                            .padding(8.dp),
                                         trackColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
                                         color = MaterialTheme.colorScheme.primary
                                     )
@@ -415,7 +482,7 @@ fun BookshelfContent(
                 HorizontalDivider(
                     modifier = Modifier.padding(horizontal = screenMargin(), vertical = 8.dp),
                     thickness = 2.dp,
-                    color = Color(0xFF6B4226).copy(alpha = 0.25f)
+                    color = MaterialTheme.colorScheme.primary.copy(alpha = 0.25f)
                 )
             }
         }
@@ -492,15 +559,28 @@ fun BookGridItem(
             ),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        Surface(
-            shape = RoundedCornerShape(16.dp),
-            modifier = Modifier.fillMaxWidth().aspectRatio(2f / 3f)
-        ) {
-            FolioBookCard(
-                imageUrl = book.coverThumbnailPath,
-                modifier = Modifier.fillMaxSize(),
-                contentDescription = book.title
-            )
+        Box(modifier = Modifier.fillMaxWidth().aspectRatio(2f / 3f)) {
+            Surface(
+                shape = RoundedCornerShape(16.dp),
+                modifier = Modifier.fillMaxSize()
+            ) {
+                FolioBookCard(
+                    imageUrl = book.coverThumbnailPath,
+                    modifier = Modifier.fillMaxSize(),
+                    contentDescription = book.title
+                )
+            }
+            if (book.isFavorite) {
+                Icon(
+                    Icons.Filled.Favorite,
+                    contentDescription = "Favorite",
+                    tint = MaterialTheme.colorScheme.tertiary,
+                    modifier = Modifier
+                        .align(Alignment.TopEnd)
+                        .padding(4.dp)
+                        .size(18.dp)
+                )
+            }
         }
         Text(
             text = book.title,
@@ -529,7 +609,8 @@ fun ShelfListItem(
                 onLongClick = { onLongClick(book) }
             ),
         shape = RoundedCornerShape(12.dp),
-        color = MaterialTheme.colorScheme.surface
+        color = MaterialTheme.colorScheme.surface,
+        tonalElevation = 1.dp
     ) {
         Row(
             modifier = Modifier.padding(12.dp),
@@ -556,6 +637,15 @@ fun ShelfListItem(
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
+            if (book.isFavorite) {
+                Icon(
+                    Icons.Filled.Favorite,
+                    contentDescription = "Favorite",
+                    tint = MaterialTheme.colorScheme.tertiary,
+                    modifier = Modifier.size(18.dp)
+                )
+                Spacer(modifier = Modifier.width(8.dp))
+            }
             Icon(
                 Icons.Filled.ChevronRight,
                 contentDescription = "Open",
@@ -566,7 +656,10 @@ fun ShelfListItem(
 }
 
 @Composable
-fun EmptyLibraryState(importLauncher: androidx.activity.result.ActivityResultLauncher<Array<String>>) {
+fun EmptyLibraryState(
+    importLauncher: androidx.activity.result.ActivityResultLauncher<Array<String>>,
+    viewModel: BookshelfViewModel? = null
+) {
     Box(
         modifier = Modifier.fillMaxSize(),
         contentAlignment = Alignment.Center
@@ -577,7 +670,7 @@ fun EmptyLibraryState(importLauncher: androidx.activity.result.ActivityResultLau
         ) {
             EmptyLibraryIllustration(
                 modifier = Modifier.size(120.dp),
-                tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
+                tint = MaterialTheme.colorScheme.primary.copy(alpha = 0.4f)
             )
             Spacer(modifier = Modifier.height(16.dp))
             Text(
@@ -595,8 +688,20 @@ fun EmptyLibraryState(importLauncher: androidx.activity.result.ActivityResultLau
                 onClick = { importLauncher.launch(arrayOf("application/pdf")) },
                 shape = RoundedCornerShape(12.dp)
             ) {
-                Text("Import PDFs")
+                Icon(Icons.Filled.Add, contentDescription = null, modifier = Modifier.size(18.dp))
+                Spacer(Modifier.width(8.dp))
+                Text("Import Your First Book")
             }
         }
     }
+}
+
+private fun shareBook(context: Context, book: BookEntity) {
+    val uri = book.uri ?: return
+    val shareIntent = Intent(Intent.ACTION_SEND).apply {
+        type = "application/pdf"
+        putExtra(Intent.EXTRA_STREAM, android.net.Uri.parse(uri))
+        addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+    }
+    context.startActivity(Intent.createChooser(shareIntent, "Share ${book.title}"))
 }

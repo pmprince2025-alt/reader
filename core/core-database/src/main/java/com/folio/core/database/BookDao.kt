@@ -26,6 +26,9 @@ interface BookDao {
     @Query("SELECT * FROM books WHERE lastOpened IS NOT NULL ORDER BY lastOpened DESC LIMIT 20")
     fun getRecentlyOpened(): Flow<List<BookEntity>>
 
+    @Query("SELECT * FROM books WHERE isFavorite = 1 ORDER BY title ASC")
+    fun getFavoriteBooks(): Flow<List<BookEntity>>
+
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertBook(book: BookEntity): Long
 

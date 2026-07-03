@@ -18,6 +18,8 @@ class SettingsDataStore(private val context: Context) {
         val HAPTICS_ENABLED = booleanPreferencesKey("haptics_enabled")
         val HAPTICS_INTENSITY = floatPreferencesKey("haptics_intensity")
         val STORAGE_BUDGET_MB = intPreferencesKey("storage_budget_mb")
+        val SORT_OPTION = stringPreferencesKey("sort_option")
+        val GRID_VIEW = booleanPreferencesKey("grid_view")
     }
 
     enum class TurnMode(val value: String) {
@@ -45,6 +47,14 @@ class SettingsDataStore(private val context: Context) {
             fun fromValue(value: String): ReadingMode =
                 entries.firstOrNull { it.value == value } ?: STANDARD
         }
+    }
+
+    val sortOption: Flow<String> = context.dataStore.data.map { prefs ->
+        prefs[Keys.SORT_OPTION] ?: SortOptionName.LAST_OPENED
+    }
+
+    val isGridView: Flow<Boolean> = context.dataStore.data.map { prefs ->
+        prefs[Keys.GRID_VIEW] ?: true
     }
 
     val turnMode: Flow<TurnMode> = context.dataStore.data.map { prefs ->
@@ -114,4 +124,19 @@ class SettingsDataStore(private val context: Context) {
     suspend fun setStorageBudgetMb(budget: Int) {
         context.dataStore.edit { it[Keys.STORAGE_BUDGET_MB] = budget }
     }
+
+    suspend fun setSortOption(sort: String) {
+        context.dataStore.edit { it[Keys.SORT_OPTION] = sort }
+    }
+
+    suspend fun setGridView(grid: Boolean) {
+        context.dataStore.edit { it[Keys.GRID_VIEW] = grid }
+    }
+}
+
+object SortOptionName {
+    const val TITLE = "title"
+    const val DATE_ADDED = "date_added"
+    const val LAST_OPENED = "last_opened"
+    const val FILE_SIZE = "file_size"
 }

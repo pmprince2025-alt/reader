@@ -9,32 +9,50 @@ private val LightColorScheme = lightColorScheme(
     primary = LeatherBrown,
     onPrimary = Color.White,
     primaryContainer = LeatherBrownLight,
+    onPrimaryContainer = Color.White,
     secondary = InkBlue,
     onSecondary = Color.White,
     secondaryContainer = InkBlueLight,
+    onSecondaryContainer = Color.White,
+    tertiary = GoldAccent,
+    onTertiary = Color.White,
+    tertiaryContainer = GoldAccentLight,
     surface = WarmPaper,
     onSurface = NearBlack,
+    surfaceVariant = WarmPaperLight,
     onSurfaceVariant = WarmGray,
-    background = WarmPaper,
+    background = WarmPaperLight,
     onBackground = NearBlack,
     surfaceTint = LeatherBrown,
-    outline = WarmGray.copy(alpha = 0.5f)
+    outline = WarmGray.copy(alpha = 0.5f),
+    outlineVariant = WarmGray.copy(alpha = 0.2f),
+    error = ErrorRed,
+    onError = Color.White
 )
 
 private val DarkColorScheme = darkColorScheme(
     primary = LeatherBrownLight,
     onPrimary = Color.White,
     primaryContainer = LeatherBrownDark,
+    onPrimaryContainer = Color(0xFFE8D9C4),
     secondary = InkBlueLight,
     onSecondary = Color.White,
     secondaryContainer = InkBlueDark,
-    surface = Color(0xFF1E1E1E),
-    onSurface = Color(0xFFE8E4DD),
-    onSurfaceVariant = Color(0xFF9E948C),
+    onSecondaryContainer = Color(0xFFB0C4DE),
+    tertiary = GoldAccentLight,
+    onTertiary = NearBlack,
+    tertiaryContainer = GoldAccent,
+    surface = DarkSurface,
+    onSurface = Color(0xFFEBE4DA),
+    surfaceVariant = DarkSurfaceVariant,
+    onSurfaceVariant = WarmGrayLight,
     background = DarkBackground,
-    onBackground = Color(0xFFE8E4DD),
+    onBackground = Color(0xFFEBE4DA),
     surfaceTint = LeatherBrownLight,
-    outline = Color(0xFF9E948C).copy(alpha = 0.3f)
+    outline = WarmGrayLight.copy(alpha = 0.3f),
+    outlineVariant = WarmGrayLight.copy(alpha = 0.15f),
+    error = Color(0xFFEF5350),
+    onError = Color.White
 )
 
 @Composable

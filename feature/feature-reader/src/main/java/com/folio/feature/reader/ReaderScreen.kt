@@ -14,6 +14,8 @@ import androidx.compose.foundation.gestures.detectTransformGestures
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.*
@@ -32,6 +34,8 @@ import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.text.rememberTextMeasurer
@@ -45,6 +49,8 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import java.text.SimpleDateFormat
+import java.util.*
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -57,21 +63,26 @@ fun ReaderScreen(
 
     LaunchedEffect(bookId) {
         viewModel.loadBook(bookId)
+        viewModel.refreshBookmarkState()
     }
 
     val backgroundColor = when (state.readingMode) {
         ReadingMode.STANDARD -> Color(0xFFFAF7F2)
         ReadingMode.SEPIA -> Color(0xFFF2E8D5)
-        ReadingMode.NIGHT -> Color(0xFF121212)
+        ReadingMode.NIGHT -> Color(0xFF141210)
     }
 
     val textColor = when (state.readingMode) {
         ReadingMode.STANDARD -> Color(0xFF1A1614)
         ReadingMode.SEPIA -> Color(0xFF3A2E22)
-        ReadingMode.NIGHT -> Color(0xFFE8E4DD)
+        ReadingMode.NIGHT -> Color(0xFFEBE4DA)
     }
 
     var showTocSheet by remember { mutableStateOf(false) }
+    var showMoreSheet by remember { mutableStateOf(false) }
+    var showGoToPageDialog by remember { mutableStateOf(false) }
+    var showBookmarksSheet by remember { mutableStateOf(false) }
+    var showBookInfoDialog by remember { mutableStateOf(false) }
     val scope = rememberCoroutineScope()
     val uiContext = LocalContext.current
     val hapticsEnabled by viewModel.hapticsEnabled.collectAsState(initial = true)
@@ -166,9 +177,7 @@ fun ReaderScreen(
 
                     if (!state.isChromeVisible) {
                         TapZones(
-                            onCenterTap = {
-                                viewModel.toggleChrome()
-                            },
+                            onCenterTap = { viewModel.toggleChrome() },
                             onPrevPage = {
                                 if (hapticsEnabled) {
                                     currentView.performHapticFeedback(android.view.HapticFeedbackConstants.KEYBOARD_TAP)
@@ -209,7 +218,14 @@ fun ReaderScreen(
                                 IconButton(onClick = { showTocSheet = true }) {
                                     Icon(Icons.Filled.List, "Table of Contents")
                                 }
-                                IconButton(onClick = { }) {
+                                IconButton(onClick = { viewModel.toggleBookmark(); viewModel.refreshBookmarkState() }) {
+                                    Icon(
+                                        if (state.isCurrentPageBookmarked) Icons.Filled.Bookmark else Icons.Filled.BookmarkBorder,
+                                        "Bookmark",
+                                        tint = if (state.isCurrentPageBookmarked) MaterialTheme.colorScheme.tertiary else textColor
+                                    )
+                                }
+                                IconButton(onClick = { showMoreSheet = true }) {
                                     Icon(Icons.Filled.MoreVert, "More")
                                 }
                             },
@@ -241,6 +257,13 @@ fun ReaderScreen(
                                     modifier = Modifier.fillMaxWidth(),
                                     horizontalArrangement = Arrangement.End
                                 ) {
+                                    IconButton(onClick = { showBookmarksSheet = true }) {
+                                        Icon(
+                                            Icons.Filled.Bookmarks,
+                                            contentDescription = "Bookmarks",
+                                            tint = textColor
+                                        )
+                                    }
                                     IconButton(onClick = { showBrightness = !showBrightness }) {
                                         Icon(
                                             Icons.Filled.BrightnessMedium,
@@ -282,20 +305,16 @@ fun ReaderScreen(
                     }
                 }
 
-                // Performance frame monitoring - triggers curl→slide fallback on sustained drops
                 LaunchedEffect(state.turnMode) {
                     if (state.turnMode != TurnMode.CURL || reduceMotion) return@LaunchedEffect
-
                     var lastFrameTime = withFrameNanos { it }
                     var consecutiveDrops = 0
                     var hasTriggeredFallback = false
-
                     while (!hasTriggeredFallback) {
                         delay(500)
                         val currentFrameTime = withFrameNanos { it }
                         val fps = 1_000_000_000f / (currentFrameTime - lastFrameTime).coerceAtLeast(1L)
                         lastFrameTime = currentFrameTime
-
                         if (fps < 30f) {
                             consecutiveDrops++
                             if (consecutiveDrops >= 3) {
@@ -355,6 +374,229 @@ fun ReaderScreen(
                 Spacer(modifier = Modifier.height(32.dp))
             }
         }
+    }
+
+    if (showMoreSheet) {
+        ModalBottomSheet(
+            onDismissRequest = { showMoreSheet = false },
+            containerColor = backgroundColor
+        ) {
+            Column(modifier = Modifier.padding(24.dp)) {
+                Text(
+                    text = "More",
+                    style = MaterialTheme.typography.titleLarge,
+                    color = textColor,
+                    modifier = Modifier.padding(bottom = 16.dp)
+                )
+
+                // Reading Mode
+                Text("Reading Mode", style = MaterialTheme.typography.labelMedium, color = textColor.copy(alpha = 0.6f))
+                Spacer(Modifier.height(4.dp))
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    ReadingMode.entries.forEach { mode ->
+                        FilterChip(
+                            selected = state.readingMode == mode,
+                            onClick = { viewModel.setReadingMode(mode) },
+                            label = { Text(mode.name, style = MaterialTheme.typography.labelSmall) }
+                        )
+                    }
+                }
+
+                Spacer(Modifier.height(16.dp))
+
+                // Page Turn Mode
+                Text("Page Turn", style = MaterialTheme.typography.labelMedium, color = textColor.copy(alpha = 0.6f))
+                Spacer(Modifier.height(4.dp))
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    TurnMode.entries.forEach { mode ->
+                        FilterChip(
+                            selected = state.turnMode == mode,
+                            onClick = { viewModel.setTurnMode(mode) },
+                            label = { Text(mode.name, style = MaterialTheme.typography.labelSmall) }
+                        )
+                    }
+                }
+
+                Spacer(Modifier.height(16.dp))
+
+                // Brightness
+                Text("Brightness", style = MaterialTheme.typography.labelMedium, color = textColor.copy(alpha = 0.6f))
+                Slider(
+                    value = state.brightness,
+                    onValueChange = { viewModel.setBrightness(it) },
+                    valueRange = 0f..1f,
+                    colors = SliderDefaults.colors(thumbColor = textColor, activeTrackColor = textColor)
+                )
+
+                HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp), color = textColor.copy(alpha = 0.15f))
+
+                ListItem(
+                    headlineContent = { Text("Go to Page") },
+                    leadingContent = { Icon(Icons.Filled.Numbers, contentDescription = null, tint = textColor) },
+                    modifier = Modifier.combinedClickable(
+                        onClick = { showMoreSheet = false; showGoToPageDialog = true }
+                    )
+                )
+                ListItem(
+                    headlineContent = { Text("Bookmarks (${state.bookmarks.size})") },
+                    leadingContent = { Icon(Icons.Filled.Bookmarks, contentDescription = null, tint = textColor) },
+                    modifier = Modifier.combinedClickable(
+                        onClick = { showMoreSheet = false; showBookmarksSheet = true }
+                    )
+                )
+                ListItem(
+                    headlineContent = { Text("Book Info") },
+                    leadingContent = { Icon(Icons.Filled.Info, contentDescription = null, tint = textColor) },
+                    modifier = Modifier.combinedClickable(
+                        onClick = { showMoreSheet = false; showBookInfoDialog = true }
+                    )
+                )
+                Spacer(Modifier.height(24.dp))
+            }
+        }
+    }
+
+    if (showGoToPageDialog) {
+        var pageInput by remember { mutableStateOf("") }
+        AlertDialog(
+            onDismissRequest = { showGoToPageDialog = false },
+            title = { Text("Go to Page", color = textColor) },
+            containerColor = backgroundColor,
+            text = {
+                Column {
+                    Text(
+                        "Enter page number (1-${state.pageCount})",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = textColor.copy(alpha = 0.6f)
+                    )
+                    Spacer(Modifier.height(8.dp))
+                    OutlinedTextField(
+                        value = pageInput,
+                        onValueChange = { pageInput = it.filter { c -> c.isDigit() } },
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number, imeAction = ImeAction.Go),
+                        keyboardActions = KeyboardActions(onGo = {
+                            val page = pageInput.toIntOrNull()?.minus(1)
+                            if (page != null && page in 0 until state.pageCount) {
+                                viewModel.navigateToPage(page)
+                                showGoToPageDialog = false
+                            }
+                        }),
+                        singleLine = true,
+                        placeholder = { Text("e.g. 42") }
+                    )
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = {
+                    val page = pageInput.toIntOrNull()?.minus(1)
+                    if (page != null && page in 0 until state.pageCount) {
+                        viewModel.navigateToPage(page)
+                        showGoToPageDialog = false
+                    }
+                }) { Text("Go") }
+            },
+            dismissButton = {
+                TextButton(onClick = { showGoToPageDialog = false }) { Text("Cancel") }
+            }
+        )
+    }
+
+    if (showBookmarksSheet) {
+        ModalBottomSheet(
+            onDismissRequest = { showBookmarksSheet = false },
+            containerColor = backgroundColor
+        ) {
+            Column(modifier = Modifier.padding(24.dp)) {
+                Text(
+                    text = "Bookmarks",
+                    style = MaterialTheme.typography.titleLarge,
+                    color = textColor,
+                    modifier = Modifier.padding(bottom = 16.dp)
+                )
+                if (state.bookmarks.isEmpty()) {
+                    Text(
+                        text = "No bookmarks yet. Tap the bookmark icon to add one.",
+                        color = textColor.copy(alpha = 0.6f),
+                        modifier = Modifier.padding(vertical = 32.dp)
+                    )
+                } else {
+                    state.bookmarks.forEach { bm ->
+                        Surface(
+                            onClick = {
+                                viewModel.navigateToPage(bm.pageIndex)
+                                showBookmarksSheet = false
+                            },
+                            modifier = Modifier.fillMaxWidth().padding(vertical = 2.dp),
+                            shape = RoundedCornerShape(8.dp),
+                            color = if (bm.pageIndex == state.currentPage)
+                                textColor.copy(alpha = 0.1f)
+                            else
+                                Color.Transparent
+                        ) {
+                            Row(
+                                modifier = Modifier.padding(12.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Icon(
+                                    Icons.Filled.Bookmark,
+                                    contentDescription = null,
+                                    tint = MaterialTheme.colorScheme.tertiary,
+                                    modifier = Modifier.size(20.dp)
+                                )
+                                Spacer(Modifier.width(12.dp))
+                                Column(modifier = Modifier.weight(1f)) {
+                                    Text(
+                                        text = bm.label ?: "Page ${bm.pageIndex + 1}",
+                                        style = MaterialTheme.typography.bodyLarge,
+                                        color = textColor
+                                    )
+                                    Text(
+                                        text = SimpleDateFormat("MMM dd", Locale.getDefault()).format(Date(bm.createdAt)),
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = textColor.copy(alpha = 0.5f)
+                                    )
+                                }
+                                IconButton(onClick = { viewModel.deleteBookmark(bm.id) }) {
+                                    Icon(Icons.Filled.Delete, contentDescription = "Delete bookmark", tint = textColor.copy(alpha = 0.5f))
+                                }
+                            }
+                        }
+                    }
+                }
+                Spacer(Modifier.height(32.dp))
+            }
+        }
+    }
+
+    if (showBookInfoDialog) {
+        AlertDialog(
+            onDismissRequest = { showBookInfoDialog = false },
+            title = { Text("Book Info", color = textColor) },
+            containerColor = backgroundColor,
+            text = {
+                Column {
+                    InfoRow("Title", state.title, textColor)
+                    InfoRow("Current Page", "${state.currentPage + 1} of ${state.pageCount}", textColor)
+                    InfoRow("Reading Progress", "${((state.currentPage + 1).toFloat() / state.pageCount.coerceAtLeast(1) * 100).toInt()}%", textColor)
+                    InfoRow("Reading Mode", state.readingMode.name, textColor)
+                    InfoRow("Page Turn", state.turnMode.name, textColor)
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = { showBookInfoDialog = false }) { Text("Close") }
+            }
+        )
+    }
+}
+
+@Composable
+private fun InfoRow(label: String, value: String, textColor: Color) {
+    Row(
+        modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
+        horizontalArrangement = Arrangement.SpaceBetween
+    ) {
+        Text(label, style = MaterialTheme.typography.bodyMedium, color = textColor.copy(alpha = 0.6f))
+        Text(value, style = MaterialTheme.typography.bodyMedium, color = textColor)
     }
 }
 
@@ -569,59 +811,38 @@ private fun PageCurlComposable(
         val progress = curlProgress.value
 
         if (isCornerCurl && progress > 0.01f) {
-            // Corner curl rendering
             drawCornerCurl(
-                w = w,
-                h = h,
-                progress = progress,
-                dragStart = dragStart,
-                dragOffset = cornerDragOffset,
+                w = w, h = h, progress = progress,
+                dragStart = dragStart, dragOffset = cornerDragOffset,
                 backgroundColor = backgroundColor,
-                currentPageBitmap = currentPageBitmap,
-                nextPageBitmap = nextPageBitmap,
+                currentPageBitmap = currentPageBitmap, nextPageBitmap = nextPageBitmap,
                 textMeasurer = textMeasurer
             )
         } else {
-            // Standard edge curl rendering
             drawPageOnCanvas(
                 textMeasurer = textMeasurer,
-                bitmap = currentPageBitmap,
-                backgroundColor = backgroundColor,
-                pageNumber = 1,
-                area = Offset.Zero,
-                pageWidth = w / 2f,
-                height = h,
-                curlProgress = progress,
-                isLeft = true
+                bitmap = currentPageBitmap, backgroundColor = backgroundColor,
+                pageNumber = 1, area = Offset.Zero,
+                pageWidth = w / 2f, height = h,
+                curlProgress = progress, isLeft = true
             )
-
             val rightPageWidth = w / 2f * (1f - progress)
             if (rightPageWidth > 0f) {
                 drawPageOnCanvas(
                     textMeasurer = textMeasurer,
-                    bitmap = nextPageBitmap,
-                    backgroundColor = backgroundColor,
-                    pageNumber = 2,
-                    area = Offset(w / 2f, 0f),
-                    pageWidth = w / 2f,
-                    height = h,
-                    curlProgress = progress,
-                    isLeft = false
+                    bitmap = nextPageBitmap, backgroundColor = backgroundColor,
+                    pageNumber = 2, area = Offset(w / 2f, 0f),
+                    pageWidth = w / 2f, height = h,
+                    curlProgress = progress, isLeft = false
                 )
             }
-
             if (progress > 0.01f) {
                 val foldX = w / 2f + (w / 2f) * (1f - progress)
                 val shadowWidth = 30f * progress
                 drawRect(
                     brush = Brush.horizontalGradient(
-                        colors = listOf(
-                            Color(0x00000000),
-                            Color(0x44000000),
-                            Color(0x00000000)
-                        ),
-                        startX = foldX - shadowWidth,
-                        endX = foldX + shadowWidth
+                        colors = listOf(Color(0x00000000), Color(0x44000000), Color(0x00000000)),
+                        startX = foldX - shadowWidth, endX = foldX + shadowWidth
                     ),
                     topLeft = Offset(foldX - shadowWidth, 0f),
                     size = Size(shadowWidth * 2, h)
@@ -630,52 +851,33 @@ private fun PageCurlComposable(
                 val curlWidth = (w - foldX) * 0.4f
                 val versoPath = Path().apply {
                     moveTo(foldX, 0f)
-                    cubicTo(
-                        foldX + curlWidth * 0.5f, -curlHeight * 0.3f,
-                        foldX + curlWidth, -curlHeight * 0.7f,
-                        w, 0f
-                    )
+                    cubicTo(foldX + curlWidth * 0.5f, -curlHeight * 0.3f, foldX + curlWidth, -curlHeight * 0.7f, w, 0f)
                     lineTo(foldX, 0f)
                     close()
                 }
-                drawPath(
-                    path = versoPath,
-                    color = Color(0xFFE8D9C4).copy(alpha = 0.7f * progress)
-                )
+                drawPath(path = versoPath, color = Color(0xFFE8D9C4).copy(alpha = 0.7f * progress))
                 val shadowPath = Path().apply {
                     moveTo(foldX + curlWidth * 0.3f, -curlHeight * 0.3f)
-                    cubicTo(
-                        foldX + curlWidth * 1.2f, -curlHeight * 0.8f,
-                        w + 20f, curlHeight * 0.5f,
-                        foldX + curlWidth * 0.5f, curlHeight * 0.2f
-                    )
+                    cubicTo(foldX + curlWidth * 1.2f, -curlHeight * 0.8f, w + 20f, curlHeight * 0.5f, foldX + curlWidth * 0.5f, curlHeight * 0.2f)
                     close()
                 }
-                drawPath(
-                    path = shadowPath,
-                    color = Color(0x22000000)
-                )
+                drawPath(path = shadowPath, color = Color(0x22000000))
             }
         }
     }
 }
 
 private fun DrawScope.drawCornerCurl(
-    w: Float,
-    h: Float,
-    progress: Float,
-    dragStart: Offset,
-    dragOffset: Offset,
+    w: Float, h: Float, progress: Float,
+    dragStart: Offset, dragOffset: Offset,
     backgroundColor: Color,
-    currentPageBitmap: Bitmap?,
-    nextPageBitmap: Bitmap?,
+    currentPageBitmap: Bitmap?, nextPageBitmap: Bitmap?,
     textMeasurer: TextMeasurer
 ) {
     val corner = dragStart
     val dx = dragOffset.x
     val dy = dragOffset.y
 
-    // Draw the full current page as base
     if (currentPageBitmap != null) {
         drawImage(
             image = currentPageBitmap.asImageBitmap(),
@@ -686,62 +888,30 @@ private fun DrawScope.drawCornerCurl(
         drawRect(color = backgroundColor, size = Size(w, h))
         val textResult = textMeasurer.measure(
             AnnotatedString("Page 1"),
-            style = TextStyle(
-                color = Color(0xFF1A1614),
-                fontSize = 28.sp,
-                fontWeight = FontWeight.Bold,
-                textAlign = TextAlign.Center
-            )
+            style = TextStyle(color = Color(0xFF1A1614), fontSize = 28.sp, fontWeight = FontWeight.Bold, textAlign = TextAlign.Center)
         )
-        drawText(
-            textLayoutResult = textResult,
-            topLeft = Offset((w - textResult.size.width) / 2f, (h - textResult.size.height) / 2f)
-        )
+        drawText(textLayoutResult = textResult, topLeft = Offset((w - textResult.size.width) / 2f, (h - textResult.size.height) / 2f))
     }
 
-    // Fold line perpendicular to drag direction
     val foldDist = progress * w * 0.4f
     val angle = kotlin.math.atan2(dy.toDouble(), dx.toDouble()).toFloat()
     val perpAngle = angle + kotlin.math.PI.toFloat() / 2f
     val foldLen = w * 0.35f * progress
 
-    val foldCenter = Offset(
-        corner.x - kotlin.math.cos(angle.toDouble()).toFloat() * foldDist,
-        corner.y - kotlin.math.sin(angle.toDouble()).toFloat() * foldDist
-    )
-    val foldStart = Offset(
-        foldCenter.x - kotlin.math.cos(perpAngle.toDouble()).toFloat() * foldLen / 2f,
-        foldCenter.y - kotlin.math.sin(perpAngle.toDouble()).toFloat() * foldLen / 2f
-    )
-    val foldEnd = Offset(
-        foldCenter.x + kotlin.math.cos(perpAngle.toDouble()).toFloat() * foldLen / 2f,
-        foldCenter.y + kotlin.math.sin(perpAngle.toDouble()).toFloat() * foldLen / 2f
-    )
+    val foldCenter = Offset(corner.x - kotlin.math.cos(angle.toDouble()).toFloat() * foldDist, corner.y - kotlin.math.sin(angle.toDouble()).toFloat() * foldDist)
+    val foldStart = Offset(foldCenter.x - kotlin.math.cos(perpAngle.toDouble()).toFloat() * foldLen / 2f, foldCenter.y - kotlin.math.sin(perpAngle.toDouble()).toFloat() * foldLen / 2f)
+    val foldEnd = Offset(foldCenter.x + kotlin.math.cos(perpAngle.toDouble()).toFloat() * foldLen / 2f, foldCenter.y + kotlin.math.sin(perpAngle.toDouble()).toFloat() * foldLen / 2f)
 
-    // Peeled corner verso
     val versoPath = Path().apply {
         moveTo(foldStart.x, foldStart.y)
-        cubicTo(
-            foldStart.x + (corner.x - foldStart.x) * 0.4f,
-            foldStart.y + (corner.y - foldStart.y) * 0.3f,
-            foldEnd.x + (corner.x - foldEnd.x) * 0.3f,
-            foldEnd.y + (corner.y - foldEnd.y) * 0.4f,
-            foldEnd.x, foldEnd.y
-        )
+        cubicTo(foldStart.x + (corner.x - foldStart.x) * 0.4f, foldStart.y + (corner.y - foldStart.y) * 0.3f, foldEnd.x + (corner.x - foldEnd.x) * 0.3f, foldEnd.y + (corner.y - foldEnd.y) * 0.4f, foldEnd.x, foldEnd.y)
         lineTo(corner.x, corner.y)
         close()
     }
-    drawPath(
-        path = versoPath,
-        color = Color(0xFFE8D9C4).copy(alpha = 0.7f * progress)
-    )
+    drawPath(path = versoPath, color = Color(0xFFE8D9C4).copy(alpha = 0.7f * progress))
 
-    // Shadow along fold line
     val shadowExt = 25f * progress
-    val shadowPerp = Offset(
-        -kotlin.math.sin(perpAngle.toDouble()).toFloat() * shadowExt,
-        kotlin.math.cos(perpAngle.toDouble()).toFloat() * shadowExt
-    )
+    val shadowPerp = Offset(-kotlin.math.sin(perpAngle.toDouble()).toFloat() * shadowExt, kotlin.math.cos(perpAngle.toDouble()).toFloat() * shadowExt)
     val shadowPath = Path().apply {
         moveTo(foldStart.x, foldStart.y)
         lineTo(foldEnd.x, foldEnd.y)
@@ -750,40 +920,18 @@ private fun DrawScope.drawCornerCurl(
         close()
     }
     drawPath(path = shadowPath, color = Color(0x22000000))
-
-    // Fold edge highlight
-    drawLine(
-        color = Color(0x55FFFFFF).copy(alpha = progress),
-        start = foldStart,
-        end = foldEnd,
-        strokeWidth = 2f
-    )
+    drawLine(color = Color(0x55FFFFFF).copy(alpha = progress), start = foldStart, end = foldEnd, strokeWidth = 2f)
 }
 
 private fun DrawScope.drawPageOnCanvas(
-    textMeasurer: TextMeasurer,
-    bitmap: Bitmap?,
-    backgroundColor: Color,
-    pageNumber: Int,
-    area: Offset,
-    pageWidth: Float,
-    height: Float,
-    curlProgress: Float,
-    isLeft: Boolean
+    textMeasurer: TextMeasurer, bitmap: Bitmap?, backgroundColor: Color,
+    pageNumber: Int, area: Offset, pageWidth: Float, height: Float,
+    curlProgress: Float, isLeft: Boolean
 ) {
-    val clipWidth = if (isLeft) {
-        pageWidth
-    } else {
-        pageWidth * (1f - curlProgress)
-    }
+    val clipWidth = if (isLeft) pageWidth else pageWidth * (1f - curlProgress)
     if (clipWidth <= 0f) return
 
-    clipRect(
-        left = area.x,
-        top = area.y,
-        right = area.x + clipWidth,
-        bottom = area.y + height
-    ) {
+    clipRect(left = area.x, top = area.y, right = area.x + clipWidth, bottom = area.y + height) {
         if (bitmap != null) {
             drawImage(
                 image = bitmap.asImageBitmap(),
@@ -792,47 +940,29 @@ private fun DrawScope.drawPageOnCanvas(
             )
         } else {
             drawRect(color = backgroundColor, topLeft = area, size = Size(pageWidth, height))
-            // Page placeholder text
             val textResult = textMeasurer.measure(
                 AnnotatedString("Page $pageNumber"),
-                style = TextStyle(
-                    color = Color(0xFF1A1614),
-                    fontSize = 28.sp,
-                    fontWeight = FontWeight.Bold,
-                    textAlign = TextAlign.Center
-                )
+                style = TextStyle(color = Color(0xFF1A1614), fontSize = 28.sp, fontWeight = FontWeight.Bold, textAlign = TextAlign.Center)
             )
-            drawText(
-                textLayoutResult = textResult,
-                topLeft = Offset(
-                    area.x + (pageWidth - textResult.size.width) / 2f,
-                    (height - textResult.size.height) / 2f
-                )
-            )
+            drawText(textLayoutResult = textResult, topLeft = Offset(area.x + (pageWidth - textResult.size.width) / 2f, (height - textResult.size.height) / 2f))
         }
     }
 }
 
 @Composable
 private fun SlideReader(
-    viewModel: ReaderViewModel,
-    currentPage: Int,
-    pageCount: Int,
-    backgroundColor: Color,
-    onChromeToggle: () -> Unit
+    viewModel: ReaderViewModel, currentPage: Int, pageCount: Int,
+    backgroundColor: Color, onChromeToggle: () -> Unit
 ) {
     var scale by remember { mutableFloatStateOf(1f) }
     var offsetX by remember { mutableFloatStateOf(0f) }
     var offsetY by remember { mutableFloatStateOf(0f) }
-
     val scope = rememberCoroutineScope()
 
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .pointerInput(Unit) {
-                detectTapGestures { onChromeToggle() }
-            }
+            .pointerInput(Unit) { detectTapGestures { onChromeToggle() } }
             .pointerInput(Unit) {
                 detectTransformGestures { centroid, pan, zoom, _ ->
                     val newScale = (scale * zoom).coerceIn(1f, 5f)
@@ -857,19 +987,11 @@ private fun SlideReader(
                 contentDescription = "Page ${currentPage + 1}",
                 modifier = Modifier
                     .fillMaxSize()
-                    .graphicsLayer(
-                        scaleX = scale,
-                        scaleY = scale,
-                        translationX = offsetX,
-                        translationY = offsetY
-                    ),
+                    .graphicsLayer(scaleX = scale, scaleY = scale, translationX = offsetX, translationY = offsetY),
                 contentScale = ContentScale.Fit
             )
         } else {
-            Box(
-                modifier = Modifier.fillMaxSize(),
-                contentAlignment = Alignment.Center
-            ) {
+            Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                 CircularProgressIndicator()
             }
         }
@@ -878,17 +1000,14 @@ private fun SlideReader(
     LaunchedEffect(scale) {
         if (scale <= 1.01f && (offsetX != 0f || offsetY != 0f)) {
             delay(100)
-            val startX = offsetX
-            val startY = offsetY
+            val startX = offsetX; val startY = offsetY
             val animProgress = Animatable(0f)
             animProgress.animateTo(1f, spring(stiffness = 100f, dampingRatio = 0.8f)) {
                 val t = value
-                offsetX = startX * (1f - t)
-                offsetY = startY * (1f - t)
+                offsetX = startX * (1f - t); offsetY = startY * (1f - t)
                 viewModel.setScroll(offsetX, offsetY)
             }
-            offsetX = 0f
-            offsetY = 0f
+            offsetX = 0f; offsetY = 0f
             viewModel.setScroll(0f, 0f)
         }
     }
@@ -896,11 +1015,8 @@ private fun SlideReader(
 
 @Composable
 private fun ScrollReader(
-    viewModel: ReaderViewModel,
-    currentPage: Int,
-    pageCount: Int,
-    backgroundColor: Color,
-    textColor: Color
+    viewModel: ReaderViewModel, currentPage: Int, pageCount: Int,
+    backgroundColor: Color, textColor: Color
 ) {
     val scrollState = rememberScrollState()
     var displayedPage by remember { mutableIntStateOf(currentPage) }
@@ -918,9 +1034,7 @@ private fun ScrollReader(
     }
 
     Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .verticalScroll(scrollState)
+        modifier = Modifier.fillMaxSize().verticalScroll(scrollState)
     ) {
         for (i in 0 until pageCount) {
             val bitmap = viewModel.getPageBitmap(i)
@@ -928,23 +1042,15 @@ private fun ScrollReader(
                 Image(
                     bitmap = bitmap.asImageBitmap(),
                     contentDescription = "Page ${i + 1}",
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .wrapContentHeight(),
+                    modifier = Modifier.fillMaxWidth().wrapContentHeight(),
                     contentScale = ContentScale.Fit
                 )
             } else {
                 Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(2000.dp),
+                    modifier = Modifier.fillMaxWidth().height(2000.dp),
                     contentAlignment = Alignment.Center
                 ) {
-                    Text(
-                        text = "Page ${i + 1}",
-                        color = textColor,
-                        style = MaterialTheme.typography.bodyLarge
-                    )
+                    Text("Page ${i + 1}", color = textColor, style = MaterialTheme.typography.bodyLarge)
                 }
             }
         }

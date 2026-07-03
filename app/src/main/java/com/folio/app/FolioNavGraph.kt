@@ -11,6 +11,8 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
+import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
@@ -34,11 +36,6 @@ fun FolioNavGraph(
     navController: NavHostController = rememberNavController(),
     updateManager: UpdateManager? = null
 ) {
-    val pendingUri = PendingImport.uri
-    if (pendingUri != null) {
-        PendingImport.uri = null
-    }
-
     val scope = rememberCoroutineScope()
     var updateStatus by remember { mutableStateOf<String?>(null) }
     val currentVersion = updateManager?.currentVersion ?: "1.0.0"
@@ -52,7 +49,6 @@ fun FolioNavGraph(
             exitTransition = { fadeOut(animationSpec = spring(dampingRatio = 0.8f)) + scaleOut(targetScale = 0.95f, animationSpec = spring(dampingRatio = 0.8f)) }
         ) {
             BookshelfScreen(
-                pendingImportUri = pendingUri,
                 onBookClick = { bookId ->
                     navController.navigate(BookDetailRoute(bookId))
                 },

@@ -2,11 +2,11 @@ package com.folio.feature.reader
 
 import android.content.Context
 import android.graphics.Bitmap
+import android.graphics.Point
+import android.view.WindowManager
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.folio.core.database.BookDao
-import com.folio.core.database.ReadingProgressDao
-import com.folio.core.database.ReadingProgressEntity
+import com.folio.core.database.*
 import com.folio.core.datastore.SettingsDataStore
 import com.folio.pdfengine.PdfDocumentSource
 import com.folio.pdfengine.PdfPageRenderer
@@ -15,6 +15,8 @@ import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 import javax.inject.Inject
 
@@ -31,10 +33,14 @@ data class ReaderUiState(
     val readingMode: ReadingMode = ReadingMode.STANDARD,
     val turnMode: TurnMode = TurnMode.CURL,
     val tocEntries: List<TocEntry> = emptyList(),
-    val brightness: Float = 1f
+    val brightness: Float = 1f,
+    val bookmarks: List<BookmarkItem> = emptyList(),
+    val bookmarkPageIndices: Set<Int> = emptySet(),
+    val isCurrentPageBookmarked: Boolean = false
 )
 
 data class TocEntry(val title: String, val pageIndex: Int)
+data class BookmarkItem(val id: Long, val pageIndex: Int, val label: String?, val createdAt: Long)
 enum class ReadingMode { STANDARD, SEPIA, NIGHT }
 enum class TurnMode { CURL, SLIDE, SCROLL }
 
@@ -43,6 +49,8 @@ class ReaderViewModel @Inject constructor(
     @ApplicationContext private val context: Context,
     private val bookDao: BookDao,
     private val readingProgressDao: ReadingProgressDao,
+    private val bookmarkDao: BookmarkDao,
+    private val readingSessionDao: ReadingSessionDao,
     private val pdfRenderer: PdfPageRenderer,
     private val settingsDataStore: SettingsDataStore
 ) : ViewModel() {
@@ -53,8 +61,18 @@ class ReaderViewModel @Inject constructor(
     private var document: PdfDocumentSource? = null
     private var bookId: Long = 0
     private val currentPageBitmaps = mutableMapOf<Int, Bitmap>()
+    private val bitmapMutex = Mutex()
+    private var screenWidth = 1080
+    private var screenHeight = 1440
 
     init {
+        val wm = context.getSystemService(Context.WINDOW_SERVICE) as? WindowManager
+        val display = wm?.defaultDisplay
+        val size = Point()
+        display?.getRealSize(size)
+        screenWidth = size.x.coerceAtLeast(1080)
+        screenHeight = size.y.coerceAtLeast(1440)
+
         viewModelScope.launch {
             try {
                 settingsDataStore.turnMode.collect { mode ->
@@ -93,8 +111,10 @@ class ReaderViewModel @Inject constructor(
         viewModelScope.launch {
             try {
                 document?.close()
-                currentPageBitmaps.values.forEach { it.recycle() }
-                currentPageBitmaps.clear()
+                bitmapMutex.withLock {
+                    currentPageBitmaps.values.forEach { it.recycle() }
+                    currentPageBitmaps.clear()
+                }
                 _uiState.update { ReaderUiState(readingMode = _uiState.value.readingMode, turnMode = _uiState.value.turnMode) }
 
                 val book = bookDao.getBookById(id) ?: run {
@@ -104,13 +124,21 @@ class ReaderViewModel @Inject constructor(
 
                 val doc = pdfRenderer.openDocument(book.filePath)
                 if (doc == null) {
-                    _uiState.update { it.copy(errorMessage = "Could not open PDF. The file may be corrupted or password-protected.", isLoading = false) }
+                    val errMsg = when {
+                        book.isPasswordProtected -> "This PDF is password-protected. Please unlock it with a different app and re-import."
+                        book.isCorrupted -> "This PDF appears to be corrupted and cannot be opened."
+                        else -> "Could not open PDF. The file may be corrupted or password-protected."
+                    }
+                    _uiState.update { it.copy(errorMessage = errMsg, isLoading = false) }
                     return@launch
                 }
                 document = doc
 
                 val progress = readingProgressDao.getProgressForBookOnce(id)
                 val startPage = progress?.currentPage ?: 0
+                val savedZoom = progress?.zoomLevel ?: 1f
+                val savedScrollX = progress?.scrollX ?: 0f
+                val savedScrollY = progress?.scrollY ?: 0f
 
                 val tocEntries = doc.getTableOfContents().map { toc ->
                     TocEntry(title = toc.title, pageIndex = toc.pageIndex)
@@ -121,6 +149,9 @@ class ReaderViewModel @Inject constructor(
                         title = book.title,
                         pageCount = doc.pageCount,
                         currentPage = startPage,
+                        zoomLevel = savedZoom,
+                        scrollX = savedScrollX,
+                        scrollY = savedScrollY,
                         isLoading = false,
                         tocEntries = tocEntries
                     )
@@ -129,10 +160,10 @@ class ReaderViewModel @Inject constructor(
                 loadPageBitmaps(startPage)
 
                 if (book.coverThumbnailPath == null) {
-                    launch {
-                        generateThumbnail(doc, book.id)
-                    }
+                    launch { generateThumbnail(doc, book.id) }
                 }
+
+                bookDao.updateBook(book.copy(lastOpened = System.currentTimeMillis()))
             } catch (e: Throwable) {
                 _uiState.update { it.copy(errorMessage = e.message ?: "Error loading book", isLoading = false) }
             }
@@ -146,16 +177,20 @@ class ReaderViewModel @Inject constructor(
 
         withContext(Dispatchers.IO) {
             for (i in start..end) {
-                if (i !in currentPageBitmaps) {
-                    val bitmap = pdfRenderer.renderPageToBitmap(doc, i, 1080, 1440)
-                    if (bitmap != null) {
-                        currentPageBitmaps[i] = bitmap
+                bitmapMutex.withLock {
+                    if (i !in currentPageBitmaps) {
+                        val bitmap = pdfRenderer.renderPageToBitmap(doc, i, screenWidth, screenHeight)
+                        if (bitmap != null) {
+                            currentPageBitmaps[i] = bitmap
+                        }
                     }
                 }
             }
-            currentPageBitmaps.keys.filter { it < start || it > end }.forEach {
-                currentPageBitmaps[it]?.recycle()
-                currentPageBitmaps.remove(it)
+            bitmapMutex.withLock {
+                currentPageBitmaps.keys.filter { it < start || it > end }.forEach {
+                    currentPageBitmaps[it]?.recycle()
+                    currentPageBitmaps.remove(it)
+                }
             }
         }
     }
@@ -166,6 +201,7 @@ class ReaderViewModel @Inject constructor(
         _uiState.update { it.copy(currentPage = clamped) }
         viewModelScope.launch { loadPageBitmaps(clamped) }
         saveProgress()
+        refreshBookmarkState()
     }
 
     fun setZoom(zoom: Float) {
@@ -214,6 +250,43 @@ class ReaderViewModel @Inject constructor(
                     zoomLevel = state.zoomLevel
                 )
             )
+        }
+    }
+
+    fun refreshBookmarkState() {
+        viewModelScope.launch {
+            val page = _uiState.value.currentPage
+            val isBookmarked = bookmarkDao.isPageBookmarked(bookId, page)
+            val bookmarks = bookmarkDao.getBookmarksForBookOnce(bookId)
+            _uiState.update {
+                it.copy(
+                    isCurrentPageBookmarked = isBookmarked,
+                    bookmarks = bookmarks.map { bm ->
+                        BookmarkItem(id = bm.id, pageIndex = bm.pageIndex, label = bm.label, createdAt = bm.createdAt)
+                    },
+                    bookmarkPageIndices = bookmarks.map { it.pageIndex }.toSet()
+                )
+            }
+        }
+    }
+
+    fun toggleBookmark() {
+        viewModelScope.launch {
+            val page = _uiState.value.currentPage
+            if (bookmarkDao.isPageBookmarked(bookId, page)) {
+                bookmarkDao.deleteBookmarkByPage(bookId, page)
+            } else {
+                bookmarkDao.insertBookmark(BookmarkEntity(bookId = bookId, pageIndex = page))
+            }
+            refreshBookmarkState()
+        }
+    }
+
+    fun deleteBookmark(bookmarkId: Long) {
+        viewModelScope.launch {
+            val bm = bookmarkDao.getBookmarkById(bookmarkId) ?: return@launch
+            bookmarkDao.deleteBookmark(bm)
+            refreshBookmarkState()
         }
     }
 

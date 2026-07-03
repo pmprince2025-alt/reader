@@ -2,7 +2,6 @@ package com.folio.feature.bookshelf
 
 import android.content.Context
 import android.net.Uri
-import android.provider.OpenableColumns
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.folio.core.database.BookDao
@@ -11,15 +10,16 @@ import com.folio.core.database.ShelfDao
 import com.folio.core.database.BookEntity
 import com.folio.core.database.BookShelfCrossRef
 import com.folio.core.database.ShelfEntity
-import com.folio.pdfengine.PdfPageRenderer
+import com.folio.app.PendingImport
+import com.folio.core.datastore.SettingsDataStore
+import com.folio.core.datastore.SortOptionName
+import com.folio.domain.library.ImportBookUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
 import java.io.File
-import java.io.FileOutputStream
 import javax.inject.Inject
 
 data class BookshelfUiState(
@@ -32,14 +32,18 @@ data class BookshelfUiState(
     val searchQuery: String = "",
     val isLoading: Boolean = true,
     val isImporting: Boolean = false,
-    val importError: String? = null
+    val importError: String? = null,
+    val favoritesOnly: Boolean = false,
+    val selectedShelfId: Long? = null,
+    val showDeleteConfirm: BookEntity? = null
 )
 
 data class LocalBookshelfState(
     val isGridView: Boolean = true,
     val searchQuery: String = "",
     val isImporting: Boolean = false,
-    val recentProgress: Map<Long, Int> = emptyMap()
+    val recentProgress: Map<Long, Int> = emptyMap(),
+    val favoritesOnly: Boolean = false
 )
 
 enum class SortOption { TITLE, DATE_ADDED, LAST_OPENED, FILE_SIZE }
@@ -49,7 +53,9 @@ class BookshelfViewModel @Inject constructor(
     private val bookDao: BookDao,
     private val shelfDao: ShelfDao,
     private val readingProgressDao: ReadingProgressDao,
-    private val pdfRenderer: PdfPageRenderer,
+    private val importBookUseCase: ImportBookUseCase,
+    private val settingsDataStore: SettingsDataStore,
+    private val pendingImport: PendingImport,
     @ApplicationContext private val context: Context
 ) : ViewModel() {
 
@@ -59,6 +65,9 @@ class BookshelfViewModel @Inject constructor(
     private val _isImporting = MutableStateFlow(false)
     private val _importError = MutableStateFlow<String?>(null)
     private val _recentProgress = MutableStateFlow<Map<Long, Int>>(emptyMap())
+    private val _favoritesOnly = MutableStateFlow(false)
+    private val _selectedShelfId = MutableStateFlow<Long?>(null)
+    private val _showDeleteConfirm = MutableStateFlow<BookEntity?>(null)
 
     init {
         viewModelScope.launch {
@@ -73,12 +82,32 @@ class BookshelfViewModel @Inject constructor(
                 _recentProgress.value = progressMap
             }
         }
+        viewModelScope.launch {
+            settingsDataStore.sortOption.collect { saved ->
+                val mapped = when (saved) {
+                    SortOptionName.TITLE -> SortOption.TITLE
+                    SortOptionName.DATE_ADDED -> SortOption.DATE_ADDED
+                    SortOptionName.FILE_SIZE -> SortOption.FILE_SIZE
+                    else -> SortOption.LAST_OPENED
+                }
+                _sortOption.value = mapped
+            }
+        }
+        viewModelScope.launch {
+            settingsDataStore.isGridView.collect { saved ->
+                _isGridView.value = saved
+            }
+        }
+        val pendingUri = pendingImport.consume()
+        if (pendingUri != null) {
+            importUri(pendingUri)
+        }
     }
 
     private val _localState = combine(
-        _isGridView, _searchQuery, _isImporting, _recentProgress
-    ) { isGrid, query, importing, progress ->
-        LocalBookshelfState(isGrid, query, importing, progress)
+        _isGridView, _searchQuery, _isImporting, _recentProgress, _favoritesOnly
+    ) { isGrid, query, importing, progress, favOnly ->
+        LocalBookshelfState(isGrid, query, importing, progress, favOnly)
     }
 
     val uiState: StateFlow<BookshelfUiState> = combine(
@@ -92,12 +121,14 @@ class BookshelfViewModel @Inject constructor(
         },
         shelfDao.getAllShelves(),
         bookDao.getRecentlyOpened(),
-        _localState
-    ) { books, shelves, recent, local ->
+        _localState,
+        _selectedShelfId
+    ) { books, shelves, recent, local, shelfId ->
         val filtered = if (local.searchQuery.isBlank()) books
         else books.filter { it.title.contains(local.searchQuery, ignoreCase = true) }
+        val favFiltered = if (local.favoritesOnly) filtered.filter { it.isFavorite } else filtered
         BookshelfUiState(
-            books = filtered,
+            books = favFiltered,
             shelves = shelves,
             recentlyOpened = recent,
             recentProgress = local.recentProgress,
@@ -106,20 +137,42 @@ class BookshelfViewModel @Inject constructor(
             searchQuery = local.searchQuery,
             isLoading = false,
             isImporting = local.isImporting,
-            importError = _importError.value
+            importError = _importError.value,
+            favoritesOnly = local.favoritesOnly,
+            selectedShelfId = shelfId,
+            showDeleteConfirm = _showDeleteConfirm.value
         )
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), BookshelfUiState())
 
     fun toggleView() {
-        _isGridView.value = !_isGridView.value
+        val new = !_isGridView.value
+        _isGridView.value = new
+        viewModelScope.launch { settingsDataStore.setGridView(new) }
     }
 
     fun setSortOption(option: SortOption) {
         _sortOption.value = option
+        viewModelScope.launch {
+            val name = when (option) {
+                SortOption.TITLE -> SortOptionName.TITLE
+                SortOption.DATE_ADDED -> SortOptionName.DATE_ADDED
+                SortOption.LAST_OPENED -> SortOptionName.LAST_OPENED
+                SortOption.FILE_SIZE -> SortOptionName.FILE_SIZE
+            }
+            settingsDataStore.setSortOption(name)
+        }
     }
 
     fun updateSearch(query: String) {
         _searchQuery.value = query
+    }
+
+    fun toggleFavoritesOnly() {
+        _favoritesOnly.value = !_favoritesOnly.value
+    }
+
+    fun setSelectedShelf(id: Long?) {
+        _selectedShelfId.value = id
     }
 
     fun renameBook(bookId: Long, newTitle: String) {
@@ -165,6 +218,38 @@ class BookshelfViewModel @Inject constructor(
         }
     }
 
+    fun requestDelete(book: BookEntity) {
+        _showDeleteConfirm.value = book
+    }
+
+    fun cancelDelete() {
+        _showDeleteConfirm.value = null
+    }
+
+    fun confirmDelete() {
+        val book = _showDeleteConfirm.value ?: return
+        _showDeleteConfirm.value = null
+        viewModelScope.launch(Dispatchers.IO) {
+            try {
+                val file = File(book.filePath)
+                if (file.exists()) file.delete()
+                if (book.coverThumbnailPath != null) {
+                    val thumb = File(book.coverThumbnailPath)
+                    if (thumb.exists()) thumb.delete()
+                }
+            } catch (e: Exception) {
+                e.printStackTrace()
+            }
+            bookDao.deleteBook(book)
+        }
+    }
+
+    fun toggleFavorite(book: BookEntity) {
+        viewModelScope.launch {
+            bookDao.updateBook(book.copy(isFavorite = !book.isFavorite))
+        }
+    }
+
     fun deleteBook(book: BookEntity) {
         viewModelScope.launch(Dispatchers.IO) {
             try {
@@ -192,45 +277,8 @@ class BookshelfViewModel @Inject constructor(
             var successCount = 0
             var failCount = 0
             for (uri in uris) {
-                try {
-                    val fileName = getFileName(uri) ?: "Untitled.pdf"
-                    val inputStream = context.contentResolver.openInputStream(uri)
-                    if (inputStream == null) {
-                        failCount++
-                        continue
-                    }
-                    val file = File(context.filesDir, "imports/${System.currentTimeMillis()}_$fileName")
-                    file.parentFile?.mkdirs()
-                    withContext(Dispatchers.IO) {
-                        inputStream.use { input ->
-                            FileOutputStream(file).use { output ->
-                                input.copyTo(output)
-                            }
-                        }
-                    }
-                    val doc = pdfRenderer.openDocument(file.absolutePath)
-                    if (doc == null) {
-                        file.delete()
-                        failCount++
-                        continue
-                    }
-                    val bookId = bookDao.insertBook(
-                        BookEntity(
-                            title = fileName.removeSuffix(".pdf").removeSuffix(".PDF"),
-                            filePath = file.absolutePath,
-                            uri = uri.toString(),
-                            pageCount = doc.pageCount,
-                            fileSize = file.length(),
-                            dateAdded = System.currentTimeMillis()
-                        )
-                    )
-                    doc.close()
-                    generateThumbnail(file.absolutePath, bookId)
-                    successCount++
-                } catch (e: Exception) {
-                    e.printStackTrace()
-                    failCount++
-                }
+                val result = importBookUseCase(uri)
+                if (result != null) successCount++ else failCount++
             }
             if (failCount > 0 && successCount == 0) {
                 _importError.value = "Import failed for all $failCount file(s)"
@@ -238,35 +286,6 @@ class BookshelfViewModel @Inject constructor(
                 _importError.value = "Imported $successCount file(s), $failCount failed"
             }
             _isImporting.value = false
-        }
-    }
-
-    private suspend fun generateThumbnail(filePath: String, bookId: Long) {
-        withContext(Dispatchers.IO) {
-            try {
-                val doc = pdfRenderer.openDocument(filePath) ?: return@withContext
-                val bitmap = pdfRenderer.renderPageToBitmap(doc, 0, 240, 360) ?: return@withContext
-                val thumbFile = File(context.cacheDir, "thumbnails/${bookId}_thumb.png")
-                thumbFile.parentFile?.mkdirs()
-                FileOutputStream(thumbFile).use { out ->
-                    bitmap.compress(android.graphics.Bitmap.CompressFormat.PNG, 90, out)
-                }
-                bitmap.recycle()
-                doc.close()
-                val book = bookDao.getBookById(bookId) ?: return@withContext
-                bookDao.updateBook(book.copy(coverThumbnailPath = thumbFile.absolutePath))
-            } catch (e: Exception) {
-                e.printStackTrace()
-            }
-        }
-    }
-
-    private fun getFileName(uri: Uri): String? {
-        val cursor = context.contentResolver.query(uri, null, null, null, null)
-        return cursor?.use {
-            if (it.moveToFirst()) {
-                it.getString(it.getColumnIndexOrThrow(OpenableColumns.DISPLAY_NAME))
-            } else null
         }
     }
 }

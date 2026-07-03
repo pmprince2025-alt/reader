@@ -1,7 +1,6 @@
 package com.folio.app
 
 import android.content.Intent
-import android.net.Uri
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -25,6 +24,9 @@ class MainActivity : ComponentActivity() {
 
     @Inject
     lateinit var updateManager: UpdateManager
+
+    @Inject
+    lateinit var pendingImport: PendingImport
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -55,9 +57,8 @@ class MainActivity : ComponentActivity() {
     private fun handlePdfIntent(intent: Intent?) {
         if (intent?.action == Intent.ACTION_VIEW && intent.type == "application/pdf") {
             intent.data?.let { uri ->
-                PendingImport.uri = uri
+                pendingImport.set(uri)
             }
         }
     }
-
 }

@@ -1,10 +1,7 @@
 package com.folio.app.di
 
 import android.content.Context
-import com.folio.core.database.BookDao
-import com.folio.core.database.FolioDatabase
-import com.folio.core.database.ReadingProgressDao
-import com.folio.core.database.ShelfDao
+import com.folio.core.database.*
 import com.folio.core.datastore.SettingsDataStore
 import com.folio.pdfengine.FallbackPdfRenderer
 import com.folio.pdfengine.PdfPageRenderer
@@ -27,7 +24,8 @@ object AppModule {
             context,
             FolioDatabase::class.java,
             "folio_database"
-        ).build()
+        ).addMigrations(FolioDatabase.MIGRATION_1_2)
+            .build()
     }
 
     @Provides
@@ -41,6 +39,14 @@ object AppModule {
     @Provides
     @Singleton
     fun provideReadingProgressDao(db: FolioDatabase): ReadingProgressDao = db.readingProgressDao()
+
+    @Provides
+    @Singleton
+    fun provideBookmarkDao(db: FolioDatabase): BookmarkDao = db.bookmarkDao()
+
+    @Provides
+    @Singleton
+    fun provideReadingSessionDao(db: FolioDatabase): ReadingSessionDao = db.readingSessionDao()
 
     @Provides
     @Singleton

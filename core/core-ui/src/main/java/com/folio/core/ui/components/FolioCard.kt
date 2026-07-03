@@ -7,8 +7,8 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import coil3.compose.AsyncImage
 
@@ -32,7 +32,8 @@ fun FolioBookCard(
                 Box(contentAlignment = Alignment.Center) {
                     Text(
                         text = "\uD83D\uDCC4",
-                        style = MaterialTheme.typography.displayLarge
+                        style = MaterialTheme.typography.displayLarge,
+                        textAlign = TextAlign.Center
                     )
                 }
             }
@@ -42,8 +43,8 @@ fun FolioBookCard(
     Surface(
         shape = RoundedCornerShape(16.dp),
         color = MaterialTheme.colorScheme.surface,
-        shadowElevation = 4.dp,
-        tonalElevation = 2.dp,
+        shadowElevation = 6.dp,
+        tonalElevation = 3.dp,
         modifier = modifier
     ) {
         if (imageUrl != null) {
