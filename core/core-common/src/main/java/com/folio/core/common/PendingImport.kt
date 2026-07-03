@@ -1,4 +1,4 @@
-package com.folio.app
+package com.folio.core.common
 
 import android.net.Uri
 import kotlinx.coroutines.flow.MutableStateFlow

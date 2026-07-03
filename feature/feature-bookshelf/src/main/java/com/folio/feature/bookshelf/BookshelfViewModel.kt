@@ -10,7 +10,7 @@ import com.folio.core.database.ShelfDao
 import com.folio.core.database.BookEntity
 import com.folio.core.database.BookShelfCrossRef
 import com.folio.core.database.ShelfEntity
-import com.folio.app.PendingImport
+import com.folio.core.common.PendingImport
 import com.folio.core.datastore.SettingsDataStore
 import com.folio.core.datastore.SortOptionName
 import com.folio.domain.library.ImportBookUseCase

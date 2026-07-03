@@ -15,6 +15,7 @@ coroutines = "1.9.0"
 androidx-core-ktx = "1.15.0"
 androidx-activity-compose = "1.9.3"
 pdfium = "1.9.0"
+javax-inject = "1"
 
 [libraries]
 androidx-core-ktx = { module = "androidx.core:core-ktx", version.ref = "androidx-core-ktx" }
@@ -42,6 +43,7 @@ lifecycle-runtime-compose = { module = "androidx.lifecycle:lifecycle-runtime-com
 lifecycle-viewmodel-compose = { module = "androidx.lifecycle:lifecycle-viewmodel-compose", version.ref = "lifecycle" }
 coroutines-android = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-android", version.ref = "coroutines" }
 pdfium-android = { module = "com.github.barteksc:pdfium-android", version.ref = "pdfium" }
+javax-inject = { module = "javax.inject:javax.inject", version.ref = "javax-inject" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }

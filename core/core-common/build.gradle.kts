@@ -16,4 +16,5 @@ android {
 
 dependencies {
     implementation(libs.coroutines.android)
+    implementation(libs.javax.inject)
 }
