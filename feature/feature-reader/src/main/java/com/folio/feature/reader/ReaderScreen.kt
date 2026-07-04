@@ -13,11 +13,13 @@ import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.gestures.detectTransformGestures
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -191,6 +193,58 @@ fun ReaderScreen(
                                 viewModel.navigateToPage(state.currentPage + 1)
                             }
                         )
+                    }
+
+                    Row(
+                        modifier = Modifier.fillMaxSize(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        IconButton(
+                            onClick = {
+                                if (hapticsEnabled) {
+                                    currentView.performHapticFeedback(android.view.HapticFeedbackConstants.KEYBOARD_TAP)
+                                }
+                                viewModel.navigateToPage(state.currentPage - 1)
+                            },
+                            enabled = state.currentPage > 0
+                        ) {
+                            Surface(
+                                shape = CircleShape,
+                                color = backgroundColor.copy(alpha = 0.7f),
+                                shadowElevation = 4.dp
+                            ) {
+                                Icon(
+                                    Icons.AutoMirrored.Filled.ArrowBack,
+                                    contentDescription = "Previous page",
+                                    modifier = Modifier.padding(12.dp),
+                                    tint = textColor
+                                )
+                            }
+                        }
+                        Spacer(modifier = Modifier.weight(1f))
+                        IconButton(
+                            onClick = {
+                                if (hapticsEnabled) {
+                                    currentView.performHapticFeedback(android.view.HapticFeedbackConstants.KEYBOARD_TAP)
+                                }
+                                viewModel.navigateToPage(state.currentPage + 1)
+                            },
+                            enabled = state.currentPage < state.pageCount - 1
+                        ) {
+                            Surface(
+                                shape = CircleShape,
+                                color = backgroundColor.copy(alpha = 0.7f),
+                                shadowElevation = 4.dp
+                            ) {
+                                Icon(
+                                    Icons.AutoMirrored.Filled.ArrowForward,
+                                    contentDescription = "Next page",
+                                    modifier = Modifier.padding(12.dp),
+                                    tint = textColor
+                                )
+                            }
+                        }
                     }
                 }
 
