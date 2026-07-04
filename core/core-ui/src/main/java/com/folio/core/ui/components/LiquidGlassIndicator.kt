@@ -1,7 +1,6 @@
 package com.folio.core.ui.components
 
 import androidx.compose.animation.core.Animatable
-import androidx.compose.animation.core.AnimationVector1D
 import androidx.compose.animation.core.SpringSpec
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
@@ -45,10 +44,10 @@ fun LiquidGlassIndicator(
     zIndex: Float = 0f
 ) {
     val density = LocalDensity.current
-    val indicatorLeft = remember { Animatable<Float, AnimationVector1D>(0f) }
-    val indicatorTop = remember { Animatable<Float, AnimationVector1D>(0f) }
-    val indicatorWidth = remember { Animatable<Float, AnimationVector1D>(0f) }
-    val indicatorHeight = remember { Animatable<Float, AnimationVector1D>(0f) }
+    val indicatorLeft = remember { Animatable(0f) }
+    val indicatorTop = remember { Animatable(0f) }
+    val indicatorWidth = remember { Animatable(0f) }
+    val indicatorHeight = remember { Animatable(0f) }
     var prevRect by remember { mutableStateOf<Rect?>(null) }
 
     LaunchedEffect(targetRect) {
