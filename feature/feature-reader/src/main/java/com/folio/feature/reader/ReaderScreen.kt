@@ -598,7 +598,28 @@ fun ReaderScreen(
                                 onClick = {},
                                 shape = RoundedCornerShape(12.dp),
                                 color = Color.Transparent,
-                                border = null
+                                border = null,
+                                modifier = Modifier
+                                    .dimplePress { viewModel.setReadingMode(mode) }
+                                    .onGloballyPositioned { coords ->
+                                        val parentCoords = coords.parentCoordinates
+                                            ?: return@onGloballyPositioned
+                                        val childRoot = coords.localToRoot(Offset.Zero)
+                                        val parentRoot = parentCoords.localToRoot(Offset.Zero)
+                                        val relX = childRoot.x - parentRoot.x
+                                        val relY = childRoot.y - parentRoot.y
+                                        val rect = Rect(
+                                            relX, relY,
+                                            relX + coords.size.width,
+                                            relY + coords.size.height
+                                        )
+                                        if (index >= readingChipPositions.size) {
+                                            readingChipPositions.addAll(
+                                                List(index - readingChipPositions.size + 1) { null }
+                                            )
+                                        }
+                                        readingChipPositions[index] = rect
+                                    }
                             ) {
                                 Row(
                                     modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
@@ -629,21 +650,6 @@ fun ReaderScreen(
                                     )
                                 }
                             }
-                                .dimplePress { viewModel.setReadingMode(mode) }
-                                .onGloballyPositioned { coords ->
-                                    val pos = coords.positionInParent()
-                                    val rect = Rect(
-                                        pos.x, pos.y,
-                                        pos.x + coords.size.width,
-                                        pos.y + coords.size.height
-                                    )
-                                    if (index >= readingChipPositions.size) {
-                                        readingChipPositions.addAll(
-                                            List(index - readingChipPositions.size + 1) { null }
-                                        )
-                                    }
-                                    readingChipPositions[index] = rect
-                                }
                         }
                     }
                 }
@@ -660,7 +666,7 @@ fun ReaderScreen(
                 Box {
                     LiquidGlassIndicator(
                         targetRect = turnChipPositions.getOrNull(state.turnMode.ordinal),
-                        color = PlasmaCyan,
+                        color = accentCyan,
                         cornerRadiusDp = 12.dp,
                         modifier = Modifier.matchParentSize()
                     )
@@ -676,7 +682,28 @@ fun ReaderScreen(
                                 onClick = {},
                                 shape = RoundedCornerShape(12.dp),
                                 color = Color.Transparent,
-                                border = null
+                                border = null,
+                                modifier = Modifier
+                                    .dimplePress { viewModel.setTurnMode(mode) }
+                                    .onGloballyPositioned { coords ->
+                                        val parentCoords = coords.parentCoordinates
+                                            ?: return@onGloballyPositioned
+                                        val childRoot = coords.localToRoot(Offset.Zero)
+                                        val parentRoot = parentCoords.localToRoot(Offset.Zero)
+                                        val relX = childRoot.x - parentRoot.x
+                                        val relY = childRoot.y - parentRoot.y
+                                        val rect = Rect(
+                                            relX, relY,
+                                            relX + coords.size.width,
+                                            relY + coords.size.height
+                                        )
+                                        if (index >= turnChipPositions.size) {
+                                            turnChipPositions.addAll(
+                                                List(index - turnChipPositions.size + 1) { null }
+                                            )
+                                        }
+                                        turnChipPositions[index] = rect
+                                    }
                             ) {
                                 Row(
                                     modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
@@ -707,21 +734,6 @@ fun ReaderScreen(
                                     )
                                 }
                             }
-                                .dimplePress { viewModel.setTurnMode(mode) }
-                                .onGloballyPositioned { coords ->
-                                    val pos = coords.positionInParent()
-                                    val rect = Rect(
-                                        pos.x, pos.y,
-                                        pos.x + coords.size.width,
-                                        pos.y + coords.size.height
-                                    )
-                                    if (index >= turnChipPositions.size) {
-                                        turnChipPositions.addAll(
-                                            List(index - turnChipPositions.size + 1) { null }
-                                        )
-                                    }
-                                    turnChipPositions[index] = rect
-                                }
                         }
                     }
                 }
