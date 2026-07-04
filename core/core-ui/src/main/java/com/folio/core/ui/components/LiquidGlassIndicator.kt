@@ -9,8 +9,6 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -19,13 +17,12 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.drawBehind
-import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.IntOffset
@@ -41,7 +38,7 @@ fun LiquidGlassIndicator(
     targetRect: Rect?,
     modifier: Modifier = Modifier,
     color: Color = PlasmaCyan,
-    shape: Shape = CircleShape,
+    cornerRadiusDp: Dp = 20.dp,
     stretchDurationMs: Int = 150,
     settleSpec: SpringSpec<Float> = spring(dampingRatio = 0.65f, stiffness = 400f),
     zIndex: Float = 0f
@@ -91,10 +88,7 @@ fun LiquidGlassIndicator(
                 height = with(density) { hPx.toDp() }
             )
             .drawBehind {
-                val cr = if (shape is RoundedCornerShape) {
-                    val r = shape.topStartCorner.let { if (it is androidx.compose.ui.unit.Dp) it.toPx() else 0f }
-                    CornerRadius(r)
-                } else CornerRadius(minOf(size.width, size.height) / 2f)
+                val cr = androidx.compose.ui.geometry.CornerRadius(cornerRadiusDp.toPx())
                 drawRoundRect(
                     brush = Brush.linearGradient(
                         colors = listOf(
@@ -130,8 +124,8 @@ fun SelectableChipRow(
     selectedIndex: Int,
     modifier: Modifier = Modifier,
     indicatorColor: Color = PlasmaCyan,
-    indicatorShape: Shape = CircleShape,
-    chipSpacing: androidx.compose.ui.unit.Dp = 8.dp,
+    indicatorCornerRadius: Dp = 20.dp,
+    chipSpacing: Dp = 8.dp,
     content: @Composable (selectedIndex: Int, chipPositions: List<Rect?>) -> Unit
 ) {
     val chipRects = remember { mutableStateOf<List<Rect?>>(emptyList()) }
@@ -143,7 +137,7 @@ fun SelectableChipRow(
                 LiquidGlassIndicator(
                     targetRect = target,
                     color = indicatorColor,
-                    shape = indicatorShape,
+                    cornerRadiusDp = indicatorCornerRadius,
                     modifier = Modifier.matchParentSize()
                 )
             }
@@ -162,10 +156,11 @@ fun Modifier.reportChipPosition(
     index: Int,
     onPosition: (Int, Rect) -> Unit
 ): Modifier = this.onGloballyPositioned { coordinates ->
-    val childPos = coordinates.positionInRoot()
-    val parentPos = coordinates.parentCoordinates?.positionInRoot() ?: return@onGloballyPositioned
-    val relX = childPos.x - parentPos.x
-    val relY = childPos.y - parentPos.y
+    val parentCoords = coordinates.parentCoordinates ?: return@onGloballyPositioned
+    val childRoot = coordinates.localToRoot(Offset.Zero)
+    val parentRoot = parentCoords.localToRoot(Offset.Zero)
+    val relX = childRoot.x - parentRoot.x
+    val relY = childRoot.y - parentRoot.y
     val rect = Rect(relX, relY, relX + coordinates.size.width, relY + coordinates.size.height)
     onPosition(index, rect)
 }

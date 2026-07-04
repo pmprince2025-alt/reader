@@ -16,14 +16,14 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.folio.core.ui.theme.PlasmaCyan
@@ -38,7 +38,7 @@ fun Modifier.glassSurface(
     tint: Color = Color.White.copy(alpha = GlassGradientStart),
     borderAlpha: Float = 0.12f,
     shadowAlpha: Float = 0.35f,
-    shape: Shape = RoundedCornerShape(16.dp)
+    cornerRadiusDp: Dp = 16.dp
 ): Modifier = this
     .graphicsLayer {
         shadowElevation = 8f
@@ -46,7 +46,7 @@ fun Modifier.glassSurface(
         spotShadowColor = Color.Black.copy(alpha = shadowAlpha)
     }
     .drawBehind {
-        val cr = shapeCornerRadius(shape)
+        val cr = CornerRadius(cornerRadiusDp.toPx())
         drawRoundRect(
             brush = Brush.linearGradient(
                 colors = listOf(tint, tint.copy(alpha = GlassGradientEnd)),
@@ -67,29 +67,21 @@ fun Modifier.glassSurface(
             alpha = 0.5f
         )
     }
-    .clip(shape)
+    .clip(RoundedCornerShape(cornerRadiusDp))
     .border(
         BorderStroke(1.dp, Color.White.copy(alpha = borderAlpha)),
-        shape
+        RoundedCornerShape(cornerRadiusDp)
     )
-
-private fun androidx.compose.ui.graphics.drawscope.DrawScope.shapeCornerRadius(shape: Shape): CornerRadius {
-    if (shape is RoundedCornerShape) {
-        val r = shape.topStartCorner.let { if (it is androidx.compose.ui.unit.Dp) it.toPx() else 0f }
-        return CornerRadius(r)
-    }
-    return CornerRadius(0f)
-}
 
 @Composable
 fun GlassBox(
     modifier: Modifier = Modifier,
     tint: Color = Color.White.copy(alpha = GlassGradientStart),
-    shape: Shape = RoundedCornerShape(16.dp),
+    cornerRadiusDp: Dp = 16.dp,
     content: @Composable BoxScope.() -> Unit
 ) {
     Box(
-        modifier = modifier.glassSurface(tint = tint, shape = shape),
+        modifier = modifier.glassSurface(tint = tint, cornerRadiusDp = cornerRadiusDp),
         contentAlignment = Alignment.Center,
         content = content
     )
@@ -103,10 +95,9 @@ fun GlassPill(
     textColor: Color = TextSecondary,
     borderRadius: Int = 999
 ) {
-    val shape = RoundedCornerShape(borderRadius.dp)
     Box(
         modifier = modifier
-            .glassSurface(tint = tint, shape = shape)
+            .glassSurface(tint = tint, cornerRadiusDp = borderRadius.dp)
             .padding(horizontal = 14.dp, vertical = 7.dp),
         contentAlignment = Alignment.Center
     ) {
@@ -130,7 +121,7 @@ fun GlassIconButton(
 ) {
     Box(
         modifier = modifier
-            .glassSurface(tint = tint, shape = CircleShape)
+            .glassSurface(tint = tint, cornerRadiusDp = 999.dp)
             .clickable(onClick = onClick),
         contentAlignment = Alignment.Center,
         content = icon

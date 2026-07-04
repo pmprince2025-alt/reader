@@ -583,7 +583,7 @@ fun ReaderScreen(
                     LiquidGlassIndicator(
                         targetRect = readingChipPositions.getOrNull(state.readingMode.ordinal),
                         color = accentCyan,
-                        shape = RoundedCornerShape(12.dp),
+                        cornerRadiusDp = 12.dp,
                         modifier = Modifier.matchParentSize()
                     )
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -661,7 +661,7 @@ fun ReaderScreen(
                     LiquidGlassIndicator(
                         targetRect = turnChipPositions.getOrNull(state.turnMode.ordinal),
                         color = PlasmaCyan,
-                        shape = RoundedCornerShape(12.dp),
+                        cornerRadiusDp = 12.dp,
                         modifier = Modifier.matchParentSize()
                     )
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {

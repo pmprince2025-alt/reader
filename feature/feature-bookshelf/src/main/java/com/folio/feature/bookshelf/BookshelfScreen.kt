@@ -582,7 +582,7 @@ fun BookshelfContent(
                 LiquidGlassIndicator(
                     targetRect = chipPositions.getOrNull(state.sortOption.ordinal),
                     color = MaterialTheme.colorScheme.secondary,
-                    shape = RoundedCornerShape(20.dp)
+                    cornerRadiusDp = 20.dp
                 )
 
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {

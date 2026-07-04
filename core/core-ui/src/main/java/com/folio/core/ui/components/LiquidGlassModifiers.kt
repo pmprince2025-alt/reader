@@ -7,6 +7,7 @@ import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.composed
@@ -25,6 +26,7 @@ fun Modifier.dimplePress(
     animationSpec: SpringSpec<Float> = spring(dampingRatio = 0.7f, stiffness = 500f),
     onTap: (() -> Unit)? = null
 ): Modifier = composed {
+    val scope = rememberCoroutineScope()
     val scale = remember { Animatable(1f) }
     val currentOnTap = rememberUpdatedState(onTap)
 
@@ -32,13 +34,13 @@ fun Modifier.dimplePress(
         .pointerInput(Unit) {
             awaitEachGesture {
                 val down = awaitFirstDown()
-                this@pointerInput.launch { scale.animateTo(scaleFactor, animationSpec) }
+                scope.launch { scale.animateTo(scaleFactor, animationSpec) }
                 do {
                     val event = awaitPointerEvent()
                     val released = event.changes.all { !it.pressed }
                     if (released) {
                         currentOnTap.value?.invoke()
-                        this@pointerInput.launch { scale.animateTo(1f, animationSpec) }
+                        scope.launch { scale.animateTo(1f, animationSpec) }
                         break
                     }
                 } while (true)
@@ -97,6 +99,7 @@ fun Modifier.dimplePressWithFill(
     scaleAnimSpec: SpringSpec<Float> = spring(dampingRatio = 0.7f, stiffness = 500f),
     onTap: (() -> Unit)? = null
 ): Modifier = composed {
+    val scope = rememberCoroutineScope()
     val scale = remember { Animatable(1f) }
     val fillFraction = remember { Animatable(0f) }
     val currentOnTap = rememberUpdatedState(onTap)
@@ -105,15 +108,15 @@ fun Modifier.dimplePressWithFill(
         .pointerInput(Unit) {
             awaitEachGesture {
                 val down = awaitFirstDown()
-                this@pointerInput.launch { scale.animateTo(scaleFactor, scaleAnimSpec) }
-                this@pointerInput.launch { fillFraction.animateTo(1f, fillAnimSpec) }
+                scope.launch { scale.animateTo(scaleFactor, scaleAnimSpec) }
+                scope.launch { fillFraction.animateTo(1f, fillAnimSpec) }
                 do {
                     val event = awaitPointerEvent()
                     val released = event.changes.all { !it.pressed }
                     if (released) {
                         currentOnTap.value?.invoke()
-                        this@pointerInput.launch { scale.animateTo(1f, scaleAnimSpec) }
-                        this@pointerInput.launch { fillFraction.animateTo(0f, fillAnimSpec) }
+                        scope.launch { scale.animateTo(1f, scaleAnimSpec) }
+                        scope.launch { fillFraction.animateTo(0f, fillAnimSpec) }
                         break
                     }
                 } while (true)
