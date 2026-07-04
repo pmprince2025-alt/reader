@@ -21,7 +21,9 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -31,6 +33,8 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.folio.core.database.BookEntity
 import com.folio.core.ui.components.EmptyLibraryIllustration
 import com.folio.core.ui.components.FolioBookCard
+import com.folio.core.ui.components.LiquidGlassIndicator
+import com.folio.core.ui.components.dimplePress
 import com.folio.core.ui.theme.screenMargin
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class, ExperimentalLayoutApi::class)
@@ -194,7 +198,8 @@ fun BookshelfScreen(
                     .align(Alignment.BottomEnd)
                     .padding(screenMargin())
                     .padding(bottom = 16.dp)
-                    .size(56.dp),
+                    .size(56.dp)
+                    .dimplePress(),
                 shape = RoundedCornerShape(20.dp),
                 color = MaterialTheme.colorScheme.secondary,
                 shadowElevation = 8.dp
@@ -566,62 +571,84 @@ fun BookshelfContent(
         contentPadding = PaddingValues(bottom = 80.dp)
     ) {
         item {
-            Row(
+            val chipPositions = remember { mutableStateListOf<Rect?>() }
+
+            Box(
                 modifier = Modifier
                     .fillMaxWidth()
                     .horizontalScroll(scrollState)
-                    .padding(horizontal = screenMargin(), vertical = 8.dp),
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    .padding(horizontal = screenMargin(), vertical = 8.dp)
             ) {
-                SortOption.entries.forEach { option ->
-                    val isSelected = state.sortOption == option
+                LiquidGlassIndicator(
+                    targetRect = chipPositions.getOrNull(state.sortOption.ordinal),
+                    color = MaterialTheme.colorScheme.secondary,
+                    shape = RoundedCornerShape(20.dp)
+                )
+
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    SortOption.entries.forEachIndexed { index, option ->
+                        val isSelected = state.sortOption == option
+                        Surface(
+                            onClick = {},
+                            shape = RoundedCornerShape(20.dp),
+                            color = Color.Transparent,
+                            border = null
+                        ) {
+                            Text(
+                                text = when (option) {
+                                    SortOption.LAST_OPENED -> "Recent"
+                                    SortOption.TITLE -> "Title"
+                                    SortOption.DATE_ADDED -> "Date"
+                                    SortOption.FILE_SIZE -> "Size"
+                                },
+                                style = MaterialTheme.typography.labelSmall,
+                                color = if (isSelected) MaterialTheme.colorScheme.secondary
+                                        else MaterialTheme.colorScheme.onSurfaceVariant,
+                                modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
+                            )
+                        }
+                            .dimplePress { onSortOptionChange(option) }
+                            .onGloballyPositioned { coords ->
+                                val pos = coords.positionInParent()
+                                val rect = Rect(
+                                    pos.x, pos.y,
+                                    pos.x + coords.size.width,
+                                    pos.y + coords.size.height
+                                )
+                                if (index >= chipPositions.size) {
+                                    chipPositions.addAll(List(index - chipPositions.size + 1) { null })
+                                }
+                                chipPositions[index] = rect
+                            }
+                    }
+
                     Surface(
-                        onClick = { onSortOptionChange(option) },
+                        onClick = {},
                         shape = RoundedCornerShape(20.dp),
-                        color = if (isSelected) MaterialTheme.colorScheme.secondary.copy(alpha = 0.2f)
-                                else MaterialTheme.colorScheme.surfaceVariant,
-                        border = if (isSelected) BorderStroke(1.dp, MaterialTheme.colorScheme.secondary) else null
+                        color = Color.Transparent,
+                        border = null
                     ) {
-                        Text(
-                            text = when (option) {
-                                SortOption.LAST_OPENED -> "Recent"
-                                SortOption.TITLE -> "Title"
-                                SortOption.DATE_ADDED -> "Date"
-                                SortOption.FILE_SIZE -> "Size"
-                            },
-                            style = MaterialTheme.typography.labelSmall,
-                            color = if (isSelected) MaterialTheme.colorScheme.secondary
-                                    else MaterialTheme.colorScheme.onSurfaceVariant,
-                            modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
-                        )
+                        Row(
+                            modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Icon(
+                                Icons.Filled.Favorite,
+                                contentDescription = null,
+                                modifier = Modifier.size(14.dp),
+                                tint = if (state.favoritesOnly) MaterialTheme.colorScheme.secondary
+                                       else MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                            Spacer(Modifier.width(6.dp))
+                            Text(
+                                "Favorites",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = if (state.favoritesOnly) MaterialTheme.colorScheme.secondary
+                                        else MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
                     }
-                }
-                Surface(
-                    onClick = onFavoritesToggle,
-                    shape = RoundedCornerShape(20.dp),
-                    color = if (state.favoritesOnly) MaterialTheme.colorScheme.secondary.copy(alpha = 0.2f)
-                            else MaterialTheme.colorScheme.surfaceVariant,
-                    border = if (state.favoritesOnly) BorderStroke(1.dp, MaterialTheme.colorScheme.secondary) else null
-                ) {
-                    Row(
-                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Icon(
-                            Icons.Filled.Favorite,
-                            contentDescription = null,
-                            modifier = Modifier.size(14.dp),
-                            tint = if (state.favoritesOnly) MaterialTheme.colorScheme.secondary
-                                   else MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                        Spacer(Modifier.width(6.dp))
-                        Text(
-                            "Favorites",
-                            style = MaterialTheme.typography.labelSmall,
-                            color = if (state.favoritesOnly) MaterialTheme.colorScheme.secondary
-                                    else MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    }
+                        .dimplePress { onFavoritesToggle() }
                 }
             }
         }
@@ -650,7 +677,9 @@ fun BookshelfContent(
 
                         Surface(
                             onClick = { onBookClick(book.id) },
-                            modifier = Modifier.width(280.dp),
+                            modifier = Modifier
+                                .width(280.dp)
+                                .dimplePress(),
                             shape = RoundedCornerShape(16.dp),
                             color = MaterialTheme.colorScheme.surface,
                             border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline)
@@ -790,6 +819,7 @@ fun BookGridItem(
 ) {
     Column(
         modifier = modifier
+            .dimplePress()
             .defaultMinSize(minWidth = 48.dp, minHeight = 48.dp)
             .combinedClickable(
                 onClick = onClick,
@@ -861,6 +891,7 @@ fun ShelfListItem(
             .fillMaxWidth()
             .defaultMinSize(minHeight = 48.dp)
             .padding(horizontal = screenMargin(), vertical = 4.dp)
+            .dimplePress()
             .combinedClickable(
                 onClick = onClick,
                 onLongClick = { onLongClick(book) }
@@ -984,7 +1015,8 @@ private fun SheetRow(
         onClick = onClick,
         modifier = Modifier
             .fillMaxWidth()
-            .padding(vertical = 4.dp),
+            .padding(vertical = 4.dp)
+            .dimplePress(),
         shape = RoundedCornerShape(12.dp),
         color = Color.Transparent
     ) {

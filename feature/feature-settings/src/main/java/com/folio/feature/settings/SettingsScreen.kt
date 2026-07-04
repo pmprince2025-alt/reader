@@ -1,7 +1,11 @@
 package com.folio.feature.settings
 
 import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.SpringSpec
 import androidx.compose.animation.core.animateDpAsState
+import androidx.compose.animation.core.spring
+import com.folio.core.ui.components.dimplePress
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -30,6 +34,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.drawscope.Stroke
@@ -65,7 +70,7 @@ fun SettingsScreen(
                     )
                 },
                 navigationIcon = {
-                    IconButton(onClick = onBackClick) {
+                    IconButton(onClick = onBackClick, modifier = Modifier.dimplePress()) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
                     }
                 },
@@ -256,6 +261,7 @@ private fun RadioSettingRow(
         modifier = Modifier
             .fillMaxWidth()
             .clickable(onClick = onClick)
+            .dimplePress()
             .padding(horizontal = 16.dp, vertical = 12.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
@@ -402,13 +408,17 @@ private fun CustomSwitch(
     checked: Boolean,
     onCheckedChange: (Boolean) -> Unit
 ) {
+    val scope = rememberCoroutineScope()
+    val springSpec = SpringSpec<Float>(dampingRatio = 0.65f, stiffness = 500f)
+    val thumbOffset = remember { Animatable(if (checked) 20f else 2f) }
+
+    LaunchedEffect(checked) {
+        thumbOffset.animateTo(if (checked) 20f else 2f, springSpec)
+    }
+
     val trackColor by animateColorAsState(
         targetValue = if (checked) MaterialTheme.colorScheme.secondary else MaterialTheme.colorScheme.outline.copy(alpha = 0.3f),
         label = "trackColor"
-    )
-    val thumbOffset by animateDpAsState(
-        targetValue = if (checked) 20.dp else 2.dp,
-        label = "thumbOffset"
     )
 
     Box(
@@ -417,12 +427,13 @@ private fun CustomSwitch(
             .height(28.dp)
             .clip(RoundedCornerShape(14.dp))
             .clickable { onCheckedChange(!checked) }
+            .dimplePress(scaleFactor = 0.92f)
             .background(trackColor),
         contentAlignment = Alignment.CenterStart
     ) {
         Box(
             modifier = Modifier
-                .offset(x = thumbOffset)
+                .offset { IntOffset(thumbOffset.value.roundToInt(), 0) }
                 .size(24.dp)
                 .clip(CircleShape)
                 .background(Color.White)
@@ -439,6 +450,7 @@ private fun HapticsToggle(
         modifier = Modifier
             .fillMaxWidth()
             .clickable { onToggle(!enabled) }
+            .dimplePress()
             .padding(horizontal = 16.dp, vertical = 12.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
@@ -688,6 +700,7 @@ private fun CheckForUpdatesRow(
         modifier = Modifier
             .fillMaxWidth()
             .clickable(onClick = onClick)
+            .dimplePress()
             .padding(start = 0.dp, end = 16.dp, top = 14.dp, bottom = 14.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
@@ -733,6 +746,7 @@ private fun SendFeedbackRow() {
         modifier = Modifier
             .fillMaxWidth()
             .clickable { }
+            .dimplePress()
             .padding(horizontal = 16.dp, vertical = 14.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {

@@ -52,6 +52,10 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import androidx.compose.ui.geometry.Rect
+import androidx.compose.ui.layout.onGloballyPositioned
+import com.folio.core.ui.components.LiquidGlassIndicator
+import com.folio.core.ui.components.dimplePress
 import java.text.SimpleDateFormat
 import java.util.*
 
@@ -307,7 +311,7 @@ fun ReaderScreen(
                                 .height(56.dp),
                             verticalAlignment = Alignment.CenterVertically
                         ) {
-                            IconButton(onClick = onBackClick) {
+                            IconButton(onClick = onBackClick, modifier = Modifier.dimplePress()) {
                                 Icon(Icons.AutoMirrored.Filled.ArrowBack, "Back", tint = textColor)
                             }
                             Text(
@@ -319,17 +323,20 @@ fun ReaderScreen(
                                 modifier = Modifier.weight(1f),
                                 textAlign = TextAlign.Center
                             )
-                            IconButton(onClick = { viewModel.toggleBookmark(); viewModel.refreshBookmarkState() }) {
+                            IconButton(
+                                onClick = { viewModel.toggleBookmark(); viewModel.refreshBookmarkState() },
+                                modifier = Modifier.dimplePress()
+                            ) {
                                 Icon(
                                     if (state.isCurrentPageBookmarked) Icons.Filled.Bookmark else Icons.Filled.BookmarkBorder,
                                     "Bookmark",
                                     tint = if (state.isCurrentPageBookmarked) MaterialTheme.colorScheme.tertiary else textColor
                                 )
                             }
-                            IconButton(onClick = { showTocSheet = true }) {
+                            IconButton(onClick = { showTocSheet = true }, modifier = Modifier.dimplePress()) {
                                 @Suppress("DEPRECATION") Icon(Icons.Filled.List, "Table of Contents", tint = textColor)
                             }
-                            IconButton(onClick = { showMoreSheet = true }) {
+                            IconButton(onClick = { showMoreSheet = true }, modifier = Modifier.dimplePress()) {
                                 Icon(Icons.Filled.MoreVert, "More", tint = textColor)
                             }
                         }
@@ -402,7 +409,10 @@ fun ReaderScreen(
                                             color = textColor
                                         )
 
-                                        IconButton(onClick = { showBrightness = !showBrightness }) {
+                                        IconButton(
+                                            onClick = { showBrightness = !showBrightness },
+                                            modifier = Modifier.dimplePress()
+                                        ) {
                                             Icon(
                                                 Icons.Filled.BrightnessMedium,
                                                 contentDescription = "Brightness",
@@ -568,50 +578,73 @@ fun ReaderScreen(
                     color = textColor.copy(alpha = 0.6f)
                 )
                 Spacer(Modifier.height(8.dp))
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    ReadingMode.entries.forEach { mode ->
-                        val isSelected = state.readingMode == mode
-                        val icon = when (mode) {
-                            ReadingMode.STANDARD -> Icons.Filled.LightMode
-                            ReadingMode.SEPIA -> Icons.Filled.WbSunny
-                            ReadingMode.NIGHT -> Icons.Filled.DarkMode
-                        }
-                        FilterChip(
-                            selected = isSelected,
-                            onClick = { viewModel.setReadingMode(mode) },
-                            label = { Text(mode.name, style = MaterialTheme.typography.labelSmall) },
-                            leadingIcon = {
-                                Box(
-                                    modifier = Modifier
-                                        .size(20.dp)
-                                        .background(
-                                            if (isSelected) accentCyan.copy(alpha = 0.15f)
-                                            else textColor.copy(alpha = 0.1f),
-                                            CircleShape
-                                        ),
-                                    contentAlignment = Alignment.Center
+                val readingChipPositions = remember { mutableStateListOf<Rect?>() }
+                Box {
+                    LiquidGlassIndicator(
+                        targetRect = readingChipPositions.getOrNull(state.readingMode.ordinal),
+                        color = accentCyan,
+                        shape = RoundedCornerShape(12.dp),
+                        modifier = Modifier.matchParentSize()
+                    )
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        ReadingMode.entries.forEachIndexed { index, mode ->
+                            val isSelected = state.readingMode == mode
+                            val icon = when (mode) {
+                                ReadingMode.STANDARD -> Icons.Filled.LightMode
+                                ReadingMode.SEPIA -> Icons.Filled.WbSunny
+                                ReadingMode.NIGHT -> Icons.Filled.DarkMode
+                            }
+                            Surface(
+                                onClick = {},
+                                shape = RoundedCornerShape(12.dp),
+                                color = Color.Transparent,
+                                border = null
+                            ) {
+                                Row(
+                                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
+                                    verticalAlignment = Alignment.CenterVertically
                                 ) {
-                                    Icon(
-                                        icon,
-                                        contentDescription = null,
-                                        modifier = Modifier.size(14.dp),
-                                        tint = if (isSelected) accentCyan else textColor
+                                    Box(
+                                        modifier = Modifier
+                                            .size(20.dp)
+                                            .background(
+                                                if (isSelected) accentCyan.copy(alpha = 0.15f)
+                                                else textColor.copy(alpha = 0.1f),
+                                                CircleShape
+                                            ),
+                                        contentAlignment = Alignment.Center
+                                    ) {
+                                        Icon(
+                                            icon,
+                                            contentDescription = null,
+                                            modifier = Modifier.size(14.dp),
+                                            tint = if (isSelected) accentCyan else textColor
+                                        )
+                                    }
+                                    Spacer(Modifier.width(4.dp))
+                                    Text(
+                                        mode.name,
+                                        style = MaterialTheme.typography.labelSmall,
+                                        color = textColor
                                     )
                                 }
-                            },
-                            colors = FilterChipDefaults.filterChipColors(
-                                containerColor = Color.Transparent,
-                                selectedContainerColor = accentCyan.copy(alpha = 0.08f),
-                                labelColor = textColor,
-                                selectedLabelColor = textColor,
-                                iconColor = textColor,
-                                selectedLeadingIconColor = accentCyan
-                            ),
-                            border = BorderStroke(
-                                width = 1.dp,
-                                color = if (isSelected) accentCyan else textColor.copy(alpha = 0.2f)
-                            )
-                        )
+                            }
+                                .dimplePress { viewModel.setReadingMode(mode) }
+                                .onGloballyPositioned { coords ->
+                                    val pos = coords.positionInParent()
+                                    val rect = Rect(
+                                        pos.x, pos.y,
+                                        pos.x + coords.size.width,
+                                        pos.y + coords.size.height
+                                    )
+                                    if (index >= readingChipPositions.size) {
+                                        readingChipPositions.addAll(
+                                            List(index - readingChipPositions.size + 1) { null }
+                                        )
+                                    }
+                                    readingChipPositions[index] = rect
+                                }
+                        }
                     }
                 }
 
@@ -623,50 +656,73 @@ fun ReaderScreen(
                     color = textColor.copy(alpha = 0.6f)
                 )
                 Spacer(Modifier.height(8.dp))
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    TurnMode.entries.forEach { mode ->
-                        val isSelected = state.turnMode == mode
-                        val icon = when (mode) {
-                            TurnMode.CURL -> Icons.Filled.Style
-                            TurnMode.SLIDE -> Icons.Filled.SwapHoriz
-                            TurnMode.SCROLL -> Icons.Filled.SwapVert
-                        }
-                        FilterChip(
-                            selected = isSelected,
-                            onClick = { viewModel.setTurnMode(mode) },
-                            label = { Text(mode.name, style = MaterialTheme.typography.labelSmall) },
-                            leadingIcon = {
-                                Box(
-                                    modifier = Modifier
-                                        .size(20.dp)
-                                        .background(
-                                            if (isSelected) accentCyan.copy(alpha = 0.15f)
-                                            else textColor.copy(alpha = 0.1f),
-                                            CircleShape
-                                        ),
-                                    contentAlignment = Alignment.Center
+                val turnChipPositions = remember { mutableStateListOf<Rect?>() }
+                Box {
+                    LiquidGlassIndicator(
+                        targetRect = turnChipPositions.getOrNull(state.turnMode.ordinal),
+                        color = PlasmaCyan,
+                        shape = RoundedCornerShape(12.dp),
+                        modifier = Modifier.matchParentSize()
+                    )
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        TurnMode.entries.forEachIndexed { index, mode ->
+                            val isSelected = state.turnMode == mode
+                            val icon = when (mode) {
+                                TurnMode.CURL -> Icons.Filled.Style
+                                TurnMode.SLIDE -> Icons.Filled.SwapHoriz
+                                TurnMode.SCROLL -> Icons.Filled.SwapVert
+                            }
+                            Surface(
+                                onClick = {},
+                                shape = RoundedCornerShape(12.dp),
+                                color = Color.Transparent,
+                                border = null
+                            ) {
+                                Row(
+                                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
+                                    verticalAlignment = Alignment.CenterVertically
                                 ) {
-                                    Icon(
-                                        icon,
-                                        contentDescription = null,
-                                        modifier = Modifier.size(14.dp),
-                                        tint = if (isSelected) accentCyan else textColor
+                                    Box(
+                                        modifier = Modifier
+                                            .size(20.dp)
+                                            .background(
+                                                if (isSelected) accentCyan.copy(alpha = 0.15f)
+                                                else textColor.copy(alpha = 0.1f),
+                                                CircleShape
+                                            ),
+                                        contentAlignment = Alignment.Center
+                                    ) {
+                                        Icon(
+                                            icon,
+                                            contentDescription = null,
+                                            modifier = Modifier.size(14.dp),
+                                            tint = if (isSelected) accentCyan else textColor
+                                        )
+                                    }
+                                    Spacer(Modifier.width(4.dp))
+                                    Text(
+                                        mode.name,
+                                        style = MaterialTheme.typography.labelSmall,
+                                        color = textColor
                                     )
                                 }
-                            },
-                            colors = FilterChipDefaults.filterChipColors(
-                                containerColor = Color.Transparent,
-                                selectedContainerColor = accentCyan.copy(alpha = 0.08f),
-                                labelColor = textColor,
-                                selectedLabelColor = textColor,
-                                iconColor = textColor,
-                                selectedLeadingIconColor = accentCyan
-                            ),
-                            border = BorderStroke(
-                                width = 1.dp,
-                                color = if (isSelected) accentCyan else textColor.copy(alpha = 0.2f)
-                            )
-                        )
+                            }
+                                .dimplePress { viewModel.setTurnMode(mode) }
+                                .onGloballyPositioned { coords ->
+                                    val pos = coords.positionInParent()
+                                    val rect = Rect(
+                                        pos.x, pos.y,
+                                        pos.x + coords.size.width,
+                                        pos.y + coords.size.height
+                                    )
+                                    if (index >= turnChipPositions.size) {
+                                        turnChipPositions.addAll(
+                                            List(index - turnChipPositions.size + 1) { null }
+                                        )
+                                    }
+                                    turnChipPositions[index] = rect
+                                }
+                        }
                     }
                 }
 
@@ -894,7 +950,10 @@ fun ReaderScreen(
                                     color = textColor.copy(alpha = 0.5f)
                                 )
                             }
-                            IconButton(onClick = { viewModel.deleteBookmark(bm.id) }) {
+                            IconButton(
+                                onClick = { viewModel.deleteBookmark(bm.id) },
+                                modifier = Modifier.dimplePress()
+                            ) {
                                 Icon(
                                     Icons.Filled.Delete,
                                     contentDescription = "Delete bookmark",

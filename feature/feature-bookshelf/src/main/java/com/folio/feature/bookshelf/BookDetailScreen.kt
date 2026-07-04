@@ -30,6 +30,8 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil3.compose.AsyncImage
 import com.folio.core.database.BookEntity
 import com.folio.core.ui.components.FolioBookCard
+import com.folio.core.ui.components.dimplePress
+import com.folio.core.ui.components.dimplePressWithFill
 import com.folio.core.ui.theme.screenMargin
 import kotlinx.coroutines.launch
 import java.util.*
@@ -93,7 +95,7 @@ fun BookDetailScreen(
                         Surface(
                             shape = CircleShape,
                             color = MaterialTheme.colorScheme.surface,
-                            modifier = Modifier.size(40.dp)
+                            modifier = Modifier.size(40.dp).dimplePress()
                         ) {
                             IconButton(onClick = onBackClick) {
                                 Icon(
@@ -106,14 +108,20 @@ fun BookDetailScreen(
                     },
                     actions = {
                         book?.let { b ->
-                            IconButton(onClick = { viewModel.toggleFavorite(b) }) {
+                            IconButton(
+                                onClick = { viewModel.toggleFavorite(b) },
+                                modifier = Modifier.dimplePress()
+                            ) {
                                 Icon(
                                     if (b.isFavorite) Icons.Filled.Favorite else Icons.Filled.FavoriteBorder,
                                     contentDescription = "Toggle Favorite",
                                     tint = if (b.isFavorite) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurfaceVariant
                                 )
                             }
-                            IconButton(onClick = { shareBook(context, b) }) {
+                            IconButton(
+                                onClick = { shareBook(context, b) },
+                                modifier = Modifier.dimplePress()
+                            ) {
                                 Icon(
                                     Icons.Filled.Share,
                                     contentDescription = "Share",
@@ -206,7 +214,8 @@ fun BookDetailScreen(
                     onClick = { onStartReading(book.id) },
                     modifier = Modifier
                         .fillMaxWidth()
-                        .height(56.dp),
+                        .height(56.dp)
+                        .dimplePressWithFill(),
                     shape = RoundedCornerShape(24.dp),
                     colors = ButtonDefaults.buttonColors(
                         containerColor = MaterialTheme.colorScheme.secondary,
@@ -284,7 +293,10 @@ fun BookDetailScreen(
                                 onClick = {
                                     viewModel.addBookToShelf(b.id, shelf.id)
                                 },
-                                modifier = Modifier.fillMaxWidth().padding(vertical = 2.dp),
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(vertical = 2.dp)
+                                    .dimplePress(),
                                 shape = RoundedCornerShape(8.dp),
                                 color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
                             ) {
@@ -431,7 +443,7 @@ private fun ActionGlassButton(
         onClick = onClick,
         shape = RoundedCornerShape(16.dp),
         color = MaterialTheme.colorScheme.surfaceVariant,
-        modifier = modifier.height(80.dp)
+        modifier = modifier.height(80.dp).dimplePress()
     ) {
         Column(
             modifier = Modifier.fillMaxSize(),
