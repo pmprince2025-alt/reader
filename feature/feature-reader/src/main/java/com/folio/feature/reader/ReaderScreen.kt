@@ -389,7 +389,11 @@ fun ReaderScreen(
             onDismissRequest = { showTocSheet = false },
             containerColor = backgroundColor
         ) {
-            Column(modifier = Modifier.padding(16.dp)) {
+            Column(
+                modifier = Modifier
+                    .padding(16.dp)
+                    .verticalScroll(rememberScrollState())
+            ) {
                 Text(
                     text = "Table of Contents",
                     style = MaterialTheme.typography.titleLarge,
