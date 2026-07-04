@@ -33,7 +33,7 @@ class RippleState(scope: CoroutineScope) {
     val activeRipples: List<*> get() = ripples.toList()
 
     fun spawn(x: Float, y: Float, maxRadius: Float = 90f) {
-        val ripple = ActiveRipple(x, y, maxRadius, Animatable(0f))
+        val ripple = ActiveRipple(x, y, maxRadius, Animatable<Float, AnimationVector1D>(0f))
         ripples.add(ripple)
         scope.launch {
             ripple.progress.animateTo(1f, tween(600))

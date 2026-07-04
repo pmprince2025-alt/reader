@@ -1,6 +1,7 @@
 package com.folio.core.ui.components
 
 import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.AnimationVector1D
 import androidx.compose.animation.core.SpringSpec
 import androidx.compose.animation.core.spring
 import androidx.compose.foundation.gestures.awaitEachGesture
@@ -27,7 +28,7 @@ fun Modifier.dimplePress(
     onTap: (() -> Unit)? = null
 ): Modifier = composed {
     val scope = rememberCoroutineScope()
-    val scale = remember { Animatable(1f) }
+    val scale = remember { Animatable<Float, AnimationVector1D>(1f) }
     val currentOnTap = rememberUpdatedState(onTap)
 
     this
@@ -58,7 +59,7 @@ fun Modifier.liquidFill(
     animationSpec: SpringSpec<Float> = spring(dampingRatio = 0.6f, stiffness = 400f),
     glowHeight: Dp = 4.dp
 ): Modifier = composed {
-    val fraction = remember { Animatable(0f) }
+    val fraction = remember { Animatable<Float, AnimationVector1D>(0f) }
 
     LaunchedEffect(targetFraction) {
         fraction.animateTo(targetFraction.coerceIn(0f, 1f), animationSpec)
@@ -100,8 +101,8 @@ fun Modifier.dimplePressWithFill(
     onTap: (() -> Unit)? = null
 ): Modifier = composed {
     val scope = rememberCoroutineScope()
-    val scale = remember { Animatable(1f) }
-    val fillFraction = remember { Animatable(0f) }
+    val scale = remember { Animatable<Float, AnimationVector1D>(1f) }
+    val fillFraction = remember { Animatable<Float, AnimationVector1D>(0f) }
     val currentOnTap = rememberUpdatedState(onTap)
 
     this
