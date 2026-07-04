@@ -41,6 +41,7 @@ fun BookDetailScreen(
     var showShelfSheet by remember { mutableStateOf(false) }
     var showCreateShelfDialog by remember { mutableStateOf(false) }
     var showDeleteConfirm by remember { mutableStateOf(false) }
+    var showRenameDialog by remember { mutableStateOf(false) }
 
     Scaffold(
         topBar = {
@@ -153,6 +154,11 @@ fun BookDetailScreen(
                     Icon(Icons.Filled.Folder, contentDescription = null, modifier = Modifier.size(18.dp))
                     Spacer(Modifier.width(4.dp))
                     Text("Shelf", style = MaterialTheme.typography.labelMedium)
+                }
+                TextButton(onClick = { showRenameDialog = true }) {
+                    Icon(Icons.Filled.Edit, contentDescription = null, modifier = Modifier.size(18.dp))
+                    Spacer(Modifier.width(4.dp))
+                    Text("Rename", style = MaterialTheme.typography.labelMedium)
                 }
                 TextButton(
                     onClick = { showDeleteConfirm = true },
@@ -274,6 +280,37 @@ fun BookDetailScreen(
                 },
                 dismissButton = {
                     TextButton(onClick = { showDeleteConfirm = false }) { Text("Cancel") }
+                }
+            )
+        }
+    }
+
+    if (showRenameDialog) {
+        book?.let { b ->
+            var newName by remember(b.id) { mutableStateOf(b.title) }
+            AlertDialog(
+                onDismissRequest = { showRenameDialog = false },
+                title = { Text("Rename Book") },
+                text = {
+                    OutlinedTextField(
+                        value = newName,
+                        onValueChange = { newName = it },
+                        label = { Text("Book title") },
+                        singleLine = true
+                    )
+                },
+                confirmButton = {
+                    TextButton(
+                        onClick = {
+                            if (newName.isNotBlank()) {
+                                viewModel.renameBook(b.id, newName)
+                                showRenameDialog = false
+                            }
+                        }
+                    ) { Text("Save") }
+                },
+                dismissButton = {
+                    TextButton(onClick = { showRenameDialog = false }) { Text("Cancel") }
                 }
             )
         }
