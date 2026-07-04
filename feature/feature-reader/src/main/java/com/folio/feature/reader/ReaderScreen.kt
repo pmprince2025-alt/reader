@@ -605,7 +605,7 @@ fun ReaderScreen(
                                 labelColor = textColor,
                                 selectedLabelColor = textColor,
                                 iconColor = textColor,
-                                selectedIconColor = accentCyan
+                                selectedLeadingIconColor = accentCyan
                             ),
                             border = BorderStroke(
                                 width = 1.dp,
@@ -659,7 +659,7 @@ fun ReaderScreen(
                                 selectedContainerColor = accentCyan.copy(alpha = 0.08f),
                                 labelColor = textColor,
                                 selectedLabelColor = textColor,
-                                leadingIconColor = textColor,
+                                iconColor = textColor,
                                 selectedLeadingIconColor = accentCyan
                             ),
                             border = BorderStroke(

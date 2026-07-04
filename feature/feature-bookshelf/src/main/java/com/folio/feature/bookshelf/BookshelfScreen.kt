@@ -33,8 +33,7 @@ import com.folio.core.ui.components.EmptyLibraryIllustration
 import com.folio.core.ui.components.FolioBookCard
 import com.folio.core.ui.theme.screenMargin
 
-@OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)
-@OptIn(ExperimentalLayoutApi::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class, ExperimentalLayoutApi::class)
 @Composable
 fun BookshelfScreen(
     onBookClick: (Long) -> Unit,
