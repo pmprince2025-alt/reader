@@ -6,8 +6,7 @@ import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.foundation.ExperimentalFoundationApi
-import androidx.compose.foundation.combinedClickable
+import androidx.compose.foundation.*
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
@@ -15,12 +14,16 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
+import androidx.compose.material.icons.outlined.ViewAgenda
+import androidx.compose.material.icons.outlined.ViewModule
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -28,7 +31,6 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.folio.core.database.BookEntity
 import com.folio.core.ui.components.EmptyLibraryIllustration
 import com.folio.core.ui.components.FolioBookCard
-import com.folio.core.ui.components.FolioTopBar
 import com.folio.core.ui.theme.screenMargin
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)
@@ -54,57 +56,118 @@ fun BookshelfScreen(
         uris?.let { viewModel.importUris(it) }
     }
 
-    Box(modifier = Modifier.fillMaxSize()) {
+    Box(modifier = Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)) {
         Column(modifier = Modifier.fillMaxSize()) {
             Row(
-                modifier = Modifier.fillMaxWidth(),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = screenMargin(), vertical = 12.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                FolioTopBar(
-                    title = "Folio",
-                    isGridView = state.isGridView,
-                    onViewToggle = { viewModel.toggleView() },
-                    onSearchClick = { showSearch = !showSearch },
-                    modifier = Modifier.weight(1f)
+                Text(
+                    text = "Library",
+                    style = MaterialTheme.typography.titleLarge,
+                    color = MaterialTheme.colorScheme.onSurface,
+                    fontWeight = FontWeight.Bold
                 )
+                Spacer(modifier = Modifier.weight(1f))
+                IconButton(onClick = { showSearch = !showSearch }) {
+                    Icon(
+                        Icons.Filled.Search,
+                        contentDescription = "Search",
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+                IconButton(onClick = { viewModel.toggleView() }) {
+                    Icon(
+                        if (state.isGridView) Icons.Outlined.ViewModule else Icons.Outlined.ViewAgenda,
+                        contentDescription = if (state.isGridView) "Grid view" else "Shelf view",
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
                 IconButton(onClick = onSettingsClick) {
-                    Icon(Icons.Filled.Settings, contentDescription = "Settings")
+                    Icon(
+                        Icons.Filled.Settings,
+                        contentDescription = "Settings",
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
                 }
             }
 
             AnimatedVisibility(visible = showSearch) {
-                OutlinedTextField(
-                    value = state.searchQuery,
-                    onValueChange = { viewModel.updateSearch(it) },
+                Surface(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(horizontal = 16.dp, vertical = 8.dp),
-                    placeholder = { Text("Search your library...") },
-                    leadingIcon = { Icon(Icons.Filled.Search, contentDescription = null) },
-                    trailingIcon = {
+                        .padding(horizontal = screenMargin(), vertical = 8.dp)
+                        .heightIn(min = 48.dp),
+                    shape = RoundedCornerShape(28.dp),
+                    color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.72f)
+                ) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 16.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Icon(
+                            Icons.Filled.Search,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.size(20.dp)
+                        )
+                        Spacer(modifier = Modifier.width(12.dp))
+                        TextField(
+                            value = state.searchQuery,
+                            onValueChange = { viewModel.updateSearch(it) },
+                            modifier = Modifier.weight(1f),
+                            placeholder = {
+                                Text(
+                                    "Search your library...",
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            },
+                            singleLine = true,
+                            colors = TextFieldDefaults.colors(
+                                focusedContainerColor = Color.Transparent,
+                                unfocusedContainerColor = Color.Transparent,
+                                focusedIndicatorColor = Color.Transparent,
+                                unfocusedIndicatorColor = Color.Transparent,
+                                cursorColor = MaterialTheme.colorScheme.secondary
+                            ),
+                            textStyle = MaterialTheme.typography.bodyMedium.copy(
+                                color = MaterialTheme.colorScheme.onSurface
+                            )
+                        )
                         if (state.searchQuery.isNotEmpty()) {
                             IconButton(onClick = { viewModel.updateSearch("") }) {
-                                Icon(Icons.Filled.Close, contentDescription = "Clear")
+                                Icon(
+                                    Icons.Filled.Close,
+                                    contentDescription = "Clear",
+                                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    modifier = Modifier.size(18.dp)
+                                )
                             }
                         }
-                    },
-                    singleLine = true,
-                    shape = RoundedCornerShape(12.dp)
-                )
+                    }
+                }
             }
 
             when {
                 state.isLoading -> {
                     Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                        CircularProgressIndicator()
+                        CircularProgressIndicator(color = MaterialTheme.colorScheme.secondary)
                     }
                 }
                 state.isImporting -> {
                     Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                         Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                            CircularProgressIndicator()
+                            CircularProgressIndicator(color = MaterialTheme.colorScheme.secondary)
                             Spacer(modifier = Modifier.height(16.dp))
-                            Text("Importing PDFs...", style = MaterialTheme.typography.bodyMedium)
+                            Text(
+                                "Importing PDFs...",
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
                         }
                     }
                 }
@@ -114,26 +177,35 @@ fun BookshelfScreen(
                 else -> {
                     BookshelfContent(
                         state = state,
-                    onBookClick = onBookClick,
-                    onSortOptionChange = { viewModel.setSortOption(it) },
-                    onFavoritesToggle = { viewModel.toggleFavoritesOnly() },
-                    onLongClick = { longPressedBook = it }
+                        onBookClick = onBookClick,
+                        onSortOptionChange = { viewModel.setSortOption(it) },
+                        onFavoritesToggle = { viewModel.toggleFavoritesOnly() },
+                        onLongClick = { longPressedBook = it }
                     )
                 }
             }
         }
 
-        // FAB - outside Column so it overlays properly
+        // FAB
         if (state.books.isNotEmpty() || state.searchQuery.isNotBlank()) {
-            FloatingActionButton(
+            Surface(
                 onClick = { importLauncher.launch(arrayOf("application/pdf")) },
                 modifier = Modifier
                     .align(Alignment.BottomEnd)
                     .padding(screenMargin())
-                    .padding(bottom = 16.dp),
-                containerColor = MaterialTheme.colorScheme.primary
+                    .padding(bottom = 16.dp)
+                    .size(56.dp),
+                shape = RoundedCornerShape(20.dp),
+                color = MaterialTheme.colorScheme.secondary,
+                shadowElevation = 8.dp
             ) {
-                Icon(Icons.Filled.Add, contentDescription = "Import PDF")
+                Box(contentAlignment = Alignment.Center) {
+                    Icon(
+                        Icons.Filled.Add,
+                        contentDescription = "Import PDF",
+                        tint = MaterialTheme.colorScheme.surface
+                    )
+                }
             }
         }
 
@@ -141,8 +213,20 @@ fun BookshelfScreen(
         state.showDeleteConfirm?.let { book ->
             AlertDialog(
                 onDismissRequest = { viewModel.cancelDelete() },
-                title = { Text("Delete Book") },
-                text = { Text("Are you sure you want to delete \"${book.title}\"? This cannot be undone.") },
+                containerColor = MaterialTheme.colorScheme.surface,
+                title = {
+                    Text(
+                        "Delete Book",
+                        color = MaterialTheme.colorScheme.error,
+                        fontWeight = FontWeight.Bold
+                    )
+                },
+                text = {
+                    Text(
+                        "Are you sure you want to delete \"${book.title}\"? This cannot be undone.",
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                },
                 confirmButton = {
                     TextButton(
                         onClick = { viewModel.confirmDelete() },
@@ -150,7 +234,10 @@ fun BookshelfScreen(
                     ) { Text("Delete") }
                 },
                 dismissButton = {
-                    TextButton(onClick = { viewModel.cancelDelete() }) { Text("Cancel") }
+                    TextButton(
+                        onClick = { viewModel.cancelDelete() },
+                        colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.onSurfaceVariant)
+                    ) { Text("Cancel") }
                 }
             )
         }
@@ -169,80 +256,64 @@ fun BookshelfScreen(
                     Text(
                         text = book.title,
                         style = MaterialTheme.typography.titleLarge,
+                        color = MaterialTheme.colorScheme.onSurface,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
-                        modifier = Modifier.padding(bottom = 16.dp)
+                        fontWeight = FontWeight.Bold,
+                        modifier = Modifier.padding(bottom = 24.dp)
                     )
 
-                    ListItem(
-                        headlineContent = { Text("Open") },
-                        leadingContent = { Icon(Icons.Filled.Book, contentDescription = null) },
-                        modifier = Modifier.combinedClickable(
-                            onClick = {
-                                longPressedBook = null
-                                onBookClick(book.id)
-                            }
-                        )
+                    SheetRow(
+                        icon = Icons.Filled.Book,
+                        label = "Open",
+                        onClick = {
+                            longPressedBook = null
+                            onBookClick(book.id)
+                        }
                     )
-                    ListItem(
-                        headlineContent = { Text("Move to Shelf") },
-                        leadingContent = { Icon(Icons.Filled.Folder, contentDescription = null) },
-                        modifier = Modifier.combinedClickable(
-                            onClick = {
-                                showShelfPicker = true
-                                pendingBookForShelf = book.id
-                            }
-                        )
+                    SheetRow(
+                        icon = Icons.Filled.Folder,
+                        label = "Move to Shelf",
+                        onClick = {
+                            showShelfPicker = true
+                            pendingBookForShelf = book.id
+                        }
                     )
-                    ListItem(
-                        headlineContent = { Text("Rename") },
-                        leadingContent = { Icon(Icons.Filled.Edit, contentDescription = null) },
-                        modifier = Modifier.combinedClickable(
-                            onClick = {
-                                showRenameDialog = true
-                                pendingRenameBook = book
-                            }
-                        )
+                    SheetRow(
+                        icon = Icons.Filled.Edit,
+                        label = "Rename",
+                        onClick = {
+                            showRenameDialog = true
+                            pendingRenameBook = book
+                        }
                     )
-                    ListItem(
-                        headlineContent = { Text("Share") },
-                        leadingContent = { Icon(Icons.Filled.Share, contentDescription = null) },
-                        modifier = Modifier.combinedClickable(
-                            onClick = {
-                                longPressedBook = null
-                                shareBook(context, book)
-                            }
-                        )
+                    SheetRow(
+                        icon = Icons.Filled.Share,
+                        label = "Share",
+                        onClick = {
+                            longPressedBook = null
+                            shareBook(context, book)
+                        }
                     )
-                    ListItem(
-                        headlineContent = {
-                            Text(if (book.isFavorite) "Remove from Favorites" else "Add to Favorites")
-                        },
-                        leadingContent = {
-                            Icon(
-                                if (book.isFavorite) Icons.Filled.Favorite else Icons.Filled.FavoriteBorder,
-                                contentDescription = null,
-                                tint = if (book.isFavorite) MaterialTheme.colorScheme.tertiary else MaterialTheme.colorScheme.onSurface
-                            )
-                        },
-                        modifier = Modifier.combinedClickable(
-                            onClick = {
-                                viewModel.toggleFavorite(book)
-                                longPressedBook = null
-                            }
-                        )
+                    SheetRow(
+                        icon = if (book.isFavorite) Icons.Filled.Favorite else Icons.Filled.FavoriteBorder,
+                        label = if (book.isFavorite) "Remove from Favorites" else "Add to Favorites",
+                        iconTint = if (book.isFavorite) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurfaceVariant,
+                        onClick = {
+                            viewModel.toggleFavorite(book)
+                            longPressedBook = null
+                        }
                     )
-                    ListItem(
-                        headlineContent = { Text("Delete") },
-                        leadingContent = { Icon(Icons.Filled.Delete, contentDescription = null) },
-                        modifier = Modifier.combinedClickable(
-                            onClick = {
-                                longPressedBook = null
-                                viewModel.requestDelete(book)
-                            }
-                        )
+                    SheetRow(
+                        icon = Icons.Filled.Delete,
+                        label = "Delete",
+                        iconTint = MaterialTheme.colorScheme.error,
+                        onClick = {
+                            longPressedBook = null
+                            viewModel.requestDelete(book)
+                        }
                     )
-                    Spacer(modifier = Modifier.height(24.dp))
+                    Spacer(modifier = Modifier.height(32.dp))
                 }
             }
         }
@@ -253,10 +324,16 @@ fun BookshelfScreen(
                 onDismissRequest = { showShelfPicker = false },
                 containerColor = MaterialTheme.colorScheme.surface
             ) {
-                Column(modifier = Modifier.padding(24.dp)) {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(24.dp)
+                ) {
                     Text(
                         "Move to Shelf",
                         style = MaterialTheme.typography.titleLarge,
+                        color = MaterialTheme.colorScheme.onSurface,
+                        fontWeight = FontWeight.Bold,
                         modifier = Modifier.padding(bottom = 16.dp)
                     )
 
@@ -268,42 +345,70 @@ fun BookshelfScreen(
                             modifier = Modifier.padding(vertical = 16.dp)
                         )
                     } else {
-                        state.shelves.forEach { shelf ->
-                            Surface(
-                                onClick = {
-                                    viewModel.addBookToShelf(pendingBookForShelf, shelf.id)
-                                    showShelfPicker = false
-                                    longPressedBook = null
-                                },
-                                modifier = Modifier.fillMaxWidth().padding(vertical = 2.dp),
-                                shape = RoundedCornerShape(8.dp),
-                                color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
-                            ) {
-                                Row(
-                                    modifier = Modifier.padding(12.dp),
-                                    verticalAlignment = Alignment.CenterVertically
+                        FlowRow(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                            verticalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            state.shelves.forEach { shelf ->
+                                Surface(
+                                    onClick = {
+                                        viewModel.addBookToShelf(pendingBookForShelf, shelf.id)
+                                        showShelfPicker = false
+                                        longPressedBook = null
+                                    },
+                                    shape = RoundedCornerShape(20.dp),
+                                    color = MaterialTheme.colorScheme.surfaceVariant
                                 ) {
-                                    Icon(Icons.Filled.Folder, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
-                                    Spacer(Modifier.width(12.dp))
-                                    Text(shelf.name, style = MaterialTheme.typography.bodyLarge, modifier = Modifier.weight(1f))
+                                    Row(
+                                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 10.dp),
+                                        verticalAlignment = Alignment.CenterVertically
+                                    ) {
+                                        Icon(
+                                            Icons.Filled.Folder,
+                                            contentDescription = null,
+                                            tint = MaterialTheme.colorScheme.primary,
+                                            modifier = Modifier.size(16.dp)
+                                        )
+                                        Spacer(Modifier.width(8.dp))
+                                        Text(
+                                            shelf.name,
+                                            style = MaterialTheme.typography.bodyMedium,
+                                            color = MaterialTheme.colorScheme.onSurface
+                                        )
+                                    }
                                 }
                             }
                         }
                     }
 
-                    HorizontalDivider(modifier = Modifier.padding(vertical = 12.dp))
+                    Spacer(modifier = Modifier.height(16.dp))
 
-                    TextButton(
+                    OutlinedButton(
                         onClick = {
                             showShelfPicker = false
                             showCreateShelfDialog = true
                         },
-                        modifier = Modifier.fillMaxWidth()
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(20.dp),
+                        colors = ButtonDefaults.outlinedButtonColors(
+                            contentColor = MaterialTheme.colorScheme.secondary
+                        ),
+                        border = BorderStroke(
+                            1.dp,
+                            MaterialTheme.colorScheme.outline.copy(alpha = 0.5f)
+                        )
                     ) {
-                        Icon(Icons.Filled.Add, contentDescription = null)
+                        Icon(
+                            Icons.Filled.Add,
+                            contentDescription = null,
+                            modifier = Modifier.size(18.dp)
+                        )
                         Spacer(Modifier.width(8.dp))
                         Text("Create New Shelf")
                     }
+
+                    Spacer(modifier = Modifier.height(24.dp))
                 }
             }
         }
@@ -313,14 +418,45 @@ fun BookshelfScreen(
             var shelfName by remember { mutableStateOf("") }
             AlertDialog(
                 onDismissRequest = { showCreateShelfDialog = false },
-                title = { Text("New Shelf") },
-                text = {
-                    OutlinedTextField(
-                        value = shelfName,
-                        onValueChange = { shelfName = it },
-                        label = { Text("Shelf name") },
-                        singleLine = true
+                containerColor = MaterialTheme.colorScheme.surface,
+                title = {
+                    Text(
+                        "New Shelf",
+                        color = MaterialTheme.colorScheme.onSurface,
+                        fontWeight = FontWeight.Bold
                     )
+                },
+                text = {
+                    Column {
+                        Text(
+                            "Enter a name for the new shelf",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.padding(bottom = 16.dp)
+                        )
+                        TextField(
+                            value = shelfName,
+                            onValueChange = { shelfName = it },
+                            modifier = Modifier.fillMaxWidth(),
+                            placeholder = {
+                                Text(
+                                    "Shelf name",
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            },
+                            singleLine = true,
+                            colors = TextFieldDefaults.colors(
+                                focusedContainerColor = Color.Transparent,
+                                unfocusedContainerColor = Color.Transparent,
+                                focusedIndicatorColor = MaterialTheme.colorScheme.secondary,
+                                unfocusedIndicatorColor = MaterialTheme.colorScheme.outline,
+                                cursorColor = MaterialTheme.colorScheme.secondary,
+                                focusedTextColor = MaterialTheme.colorScheme.onSurface,
+                                unfocusedTextColor = MaterialTheme.colorScheme.onSurface
+                            ),
+                            textStyle = MaterialTheme.typography.bodyLarge
+                        )
+                    }
                 },
                 confirmButton = {
                     TextButton(
@@ -329,11 +465,15 @@ fun BookshelfScreen(
                                 viewModel.createShelf(shelfName)
                                 showCreateShelfDialog = false
                             }
-                        }
+                        },
+                        colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.secondary)
                     ) { Text("Create") }
                 },
                 dismissButton = {
-                    TextButton(onClick = { showCreateShelfDialog = false }) { Text("Cancel") }
+                    TextButton(
+                        onClick = { showCreateShelfDialog = false },
+                        colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.onSurfaceVariant)
+                    ) { Text("Cancel") }
                 }
             )
         }
@@ -343,14 +483,45 @@ fun BookshelfScreen(
             var newName by remember { mutableStateOf(pendingRenameBook?.title ?: "") }
             AlertDialog(
                 onDismissRequest = { showRenameDialog = false },
-                title = { Text("Rename") },
-                text = {
-                    OutlinedTextField(
-                        value = newName,
-                        onValueChange = { newName = it },
-                        label = { Text("Book title") },
-                        singleLine = true
+                containerColor = MaterialTheme.colorScheme.surface,
+                title = {
+                    Text(
+                        "Rename",
+                        color = MaterialTheme.colorScheme.onSurface,
+                        fontWeight = FontWeight.Bold
                     )
+                },
+                text = {
+                    Column {
+                        Text(
+                            "Enter a new title for the book",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.padding(bottom = 16.dp)
+                        )
+                        TextField(
+                            value = newName,
+                            onValueChange = { newName = it },
+                            modifier = Modifier.fillMaxWidth(),
+                            placeholder = {
+                                Text(
+                                    "Book title",
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            },
+                            singleLine = true,
+                            colors = TextFieldDefaults.colors(
+                                focusedContainerColor = Color.Transparent,
+                                unfocusedContainerColor = Color.Transparent,
+                                focusedIndicatorColor = MaterialTheme.colorScheme.secondary,
+                                unfocusedIndicatorColor = MaterialTheme.colorScheme.outline,
+                                cursorColor = MaterialTheme.colorScheme.secondary,
+                                focusedTextColor = MaterialTheme.colorScheme.onSurface,
+                                unfocusedTextColor = MaterialTheme.colorScheme.onSurface
+                            ),
+                            textStyle = MaterialTheme.typography.bodyLarge
+                        )
+                    }
                 },
                 confirmButton = {
                     TextButton(
@@ -361,17 +532,25 @@ fun BookshelfScreen(
                                 longPressedBook = null
                                 pendingRenameBook = null
                             }
-                        }
+                        },
+                        colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.secondary)
                     ) { Text("Save") }
                 },
                 dismissButton = {
-                    TextButton(onClick = { showRenameDialog = false }) { Text("Cancel") }
+                    TextButton(
+                        onClick = {
+                            showRenameDialog = false
+                            pendingRenameBook = null
+                        },
+                        colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.onSurfaceVariant)
+                    ) { Text("Cancel") }
                 }
             )
         }
     }
 }
 
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun BookshelfContent(
     state: BookshelfUiState,
@@ -380,6 +559,8 @@ fun BookshelfContent(
     onFavoritesToggle: () -> Unit = {},
     onLongClick: (BookEntity) -> Unit = {}
 ) {
+    val scrollState = rememberScrollState()
+
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
         contentPadding = PaddingValues(bottom = 80.dp)
@@ -388,34 +569,60 @@ fun BookshelfContent(
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 16.dp, vertical = 4.dp),
+                    .horizontalScroll(scrollState)
+                    .padding(horizontal = screenMargin(), vertical = 8.dp),
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
                 SortOption.entries.forEach { option ->
-                    FilterChip(
-                        selected = state.sortOption == option,
+                    val isSelected = state.sortOption == option
+                    Surface(
                         onClick = { onSortOptionChange(option) },
-                        label = {
-                            Text(
-                                when (option) {
-                                    SortOption.TITLE -> "Title"
-                                    SortOption.DATE_ADDED -> "Date Added"
-                                    SortOption.LAST_OPENED -> "Recent"
-                                    SortOption.FILE_SIZE -> "File Size"
-                                },
-                                style = MaterialTheme.typography.labelSmall
-                            )
-                        }
-                    )
+                        shape = RoundedCornerShape(20.dp),
+                        color = if (isSelected) MaterialTheme.colorScheme.secondary.copy(alpha = 0.2f)
+                                else MaterialTheme.colorScheme.surfaceVariant,
+                        border = if (isSelected) BorderStroke(1.dp, MaterialTheme.colorScheme.secondary) else null
+                    ) {
+                        Text(
+                            text = when (option) {
+                                SortOption.LAST_OPENED -> "Recent"
+                                SortOption.TITLE -> "Title"
+                                SortOption.DATE_ADDED -> "Date"
+                                SortOption.FILE_SIZE -> "Size"
+                            },
+                            style = MaterialTheme.typography.labelSmall,
+                            color = if (isSelected) MaterialTheme.colorScheme.secondary
+                                    else MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
+                        )
+                    }
                 }
-                FilterChip(
-                    selected = state.favoritesOnly,
+                Surface(
                     onClick = onFavoritesToggle,
-                    label = { Text("Favorites", style = MaterialTheme.typography.labelSmall) },
-                    leadingIcon = if (state.favoritesOnly) {
-                        { Icon(Icons.Filled.Favorite, contentDescription = null, modifier = Modifier.size(16.dp)) }
-                    } else null
-                )
+                    shape = RoundedCornerShape(20.dp),
+                    color = if (state.favoritesOnly) MaterialTheme.colorScheme.secondary.copy(alpha = 0.2f)
+                            else MaterialTheme.colorScheme.surfaceVariant,
+                    border = if (state.favoritesOnly) BorderStroke(1.dp, MaterialTheme.colorScheme.secondary) else null
+                ) {
+                    Row(
+                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Icon(
+                            Icons.Filled.Favorite,
+                            contentDescription = null,
+                            modifier = Modifier.size(14.dp),
+                            tint = if (state.favoritesOnly) MaterialTheme.colorScheme.secondary
+                                   else MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                        Spacer(Modifier.width(6.dp))
+                        Text(
+                            "Favorites",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = if (state.favoritesOnly) MaterialTheme.colorScheme.secondary
+                                    else MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                }
             }
         }
 
@@ -424,6 +631,8 @@ fun BookshelfContent(
                 Text(
                     text = "Continue Reading",
                     style = MaterialTheme.typography.titleLarge,
+                    color = MaterialTheme.colorScheme.onSurface,
+                    fontWeight = FontWeight.Bold,
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(horizontal = screenMargin(), vertical = 8.dp)
@@ -435,55 +644,82 @@ fun BookshelfContent(
                     horizontalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
                     items(state.recentlyOpened) { book ->
-                        Column(modifier = Modifier.width(120.dp)) {
-                            Box(modifier = Modifier
-                                .fillMaxWidth()
-                                .height(180.dp)
+                        val currentPage = state.recentProgress[book.id] ?: 0
+                        val progress = if (currentPage > 0 && book.pageCount > 0)
+                            currentPage.toFloat() / book.pageCount else 0f
+
+                        Surface(
+                            onClick = { onBookClick(book.id) },
+                            modifier = Modifier.width(280.dp),
+                            shape = RoundedCornerShape(16.dp),
+                            color = MaterialTheme.colorScheme.surface,
+                            border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline)
+                        ) {
+                            Row(
+                                modifier = Modifier.padding(12.dp),
+                                verticalAlignment = Alignment.Top
                             ) {
-                                Surface(
-                                    onClick = { onBookClick(book.id) },
-                                    shape = RoundedCornerShape(16.dp),
-                                    modifier = Modifier.fillMaxSize()
+                                FolioBookCard(
+                                    imageUrl = book.coverThumbnailPath,
+                                    modifier = Modifier
+                                        .width(60.dp)
+                                        .height(84.dp),
+                                    contentDescription = book.title
+                                )
+                                Spacer(Modifier.width(12.dp))
+                                Column(
+                                    modifier = Modifier.weight(1f)
                                 ) {
-                                    FolioBookCard(
-                                        imageUrl = book.coverThumbnailPath,
-                                        modifier = Modifier.fillMaxSize(),
-                                        contentDescription = book.title
+                                    Text(
+                                        text = book.title,
+                                        style = MaterialTheme.typography.bodyMedium,
+                                        color = MaterialTheme.colorScheme.onSurface,
+                                        fontWeight = FontWeight.SemiBold,
+                                        maxLines = 1,
+                                        overflow = TextOverflow.Ellipsis
                                     )
-                                }
-                                val currentPage = state.recentProgress[book.id] ?: 0
-                                if (currentPage > 0 && book.pageCount > 0) {
-                                    val progress = currentPage.toFloat() / book.pageCount
-                                    LinearProgressIndicator(
-                                        progress = progress,
-                                        modifier = Modifier
-                                            .fillMaxWidth()
-                                            .align(Alignment.BottomCenter)
-                                            .padding(8.dp),
-                                        trackColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
-                                        color = MaterialTheme.colorScheme.primary
-                                    )
+                                    if (book.author != null) {
+                                        Text(
+                                            text = book.author,
+                                            style = MaterialTheme.typography.bodySmall,
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                            maxLines = 1,
+                                            overflow = TextOverflow.Ellipsis,
+                                            modifier = Modifier.padding(top = 2.dp)
+                                        )
+                                    }
+                                    Spacer(Modifier.weight(1f))
+                                    if (progress > 0f) {
+                                        LinearProgressIndicator(
+                                            progress = progress,
+                                            modifier = Modifier
+                                                .fillMaxWidth()
+                                                .height(4.dp)
+                                                .clip(RoundedCornerShape(2.dp)),
+                                            color = MaterialTheme.colorScheme.secondary,
+                                            trackColor = MaterialTheme.colorScheme.surfaceVariant
+                                        )
+                                        Spacer(Modifier.height(4.dp))
+                                        Text(
+                                            text = "Page $currentPage of ${book.pageCount}",
+                                            style = MaterialTheme.typography.labelSmall,
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                                        )
+                                    } else {
+                                        Text(
+                                            text = "${book.pageCount} pages",
+                                            style = MaterialTheme.typography.labelSmall,
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                                        )
+                                    }
                                 }
                             }
-                            Text(
-                                text = book.title,
-                                style = MaterialTheme.typography.bodySmall,
-                                maxLines = 1,
-                                overflow = TextOverflow.Ellipsis,
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(top = 4.dp)
-                            )
                         }
                     }
                 }
             }
             item {
-                HorizontalDivider(
-                    modifier = Modifier.padding(horizontal = screenMargin(), vertical = 8.dp),
-                    thickness = 2.dp,
-                    color = MaterialTheme.colorScheme.primary.copy(alpha = 0.25f)
-                )
+                Spacer(modifier = Modifier.height(4.dp))
             }
         }
 
@@ -491,13 +727,15 @@ fun BookshelfContent(
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = screenMargin(), vertical = 8.dp),
+                    .padding(horizontal = screenMargin(), vertical = 12.dp),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Text(
                     text = "All Books",
-                    style = MaterialTheme.typography.titleLarge
+                    style = MaterialTheme.typography.titleLarge,
+                    color = MaterialTheme.colorScheme.onSurface,
+                    fontWeight = FontWeight.Bold
                 )
                 Text(
                     text = "${state.books.size} books",
@@ -508,7 +746,7 @@ fun BookshelfContent(
         }
 
         if (state.isGridView) {
-            val chunks = state.books.chunked(3)
+            val chunks = state.books.chunked(2)
             items(chunks.size) { index ->
                 Row(
                     modifier = Modifier
@@ -524,11 +762,11 @@ fun BookshelfContent(
                             modifier = Modifier.weight(1f)
                         )
                     }
-                    repeat(3 - chunks[index].size) {
+                    repeat(2 - chunks[index].size) {
                         Spacer(modifier = Modifier.weight(1f))
                     }
                 }
-                Spacer(modifier = Modifier.height(12.dp))
+                Spacer(modifier = Modifier.height(16.dp))
             }
         } else {
             items(state.books) { book ->
@@ -556,12 +794,15 @@ fun BookGridItem(
             .combinedClickable(
                 onClick = onClick,
                 onLongClick = { onLongClick(book) }
-            ),
-        horizontalAlignment = Alignment.CenterHorizontally
+            )
     ) {
-        Box(modifier = Modifier.fillMaxWidth().aspectRatio(2f / 3f)) {
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(150.dp)
+        ) {
             Surface(
-                shape = RoundedCornerShape(16.dp),
+                shape = RoundedCornerShape(12.dp),
                 modifier = Modifier.fillMaxSize()
             ) {
                 FolioBookCard(
@@ -571,23 +812,39 @@ fun BookGridItem(
                 )
             }
             if (book.isFavorite) {
-                Icon(
-                    Icons.Filled.Favorite,
-                    contentDescription = "Favorite",
-                    tint = MaterialTheme.colorScheme.tertiary,
+                Surface(
+                    shape = RoundedCornerShape(50),
+                    color = MaterialTheme.colorScheme.primary.copy(alpha = 0.9f),
                     modifier = Modifier
                         .align(Alignment.TopEnd)
-                        .padding(4.dp)
-                        .size(18.dp)
-                )
+                        .padding(6.dp)
+                        .size(22.dp)
+                ) {
+                    Box(contentAlignment = Alignment.Center) {
+                        Icon(
+                            Icons.Filled.Favorite,
+                            contentDescription = "Favorite",
+                            tint = Color.White,
+                            modifier = Modifier.size(12.dp)
+                        )
+                    }
+                }
             }
         }
+        Spacer(modifier = Modifier.height(8.dp))
         Text(
             text = book.title,
-            style = MaterialTheme.typography.bodySmall,
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurface,
+            fontWeight = FontWeight.SemiBold,
             maxLines = 2,
-            overflow = TextOverflow.Ellipsis,
-            modifier = Modifier.padding(top = 4.dp)
+            overflow = TextOverflow.Ellipsis
+        )
+        Spacer(modifier = Modifier.height(2.dp))
+        Text(
+            text = "${book.pageCount} pages · ${formatFileSize(book.fileSize)}",
+            style = MaterialTheme.typography.labelSmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
         )
     }
 }
@@ -610,7 +867,7 @@ fun ShelfListItem(
             ),
         shape = RoundedCornerShape(12.dp),
         color = MaterialTheme.colorScheme.surface,
-        tonalElevation = 1.dp
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline)
     ) {
         Row(
             modifier = Modifier.padding(12.dp),
@@ -628,28 +885,42 @@ fun ShelfListItem(
                 Text(
                     text = book.title,
                     style = MaterialTheme.typography.bodyLarge,
+                    color = MaterialTheme.colorScheme.onSurface,
+                    fontWeight = FontWeight.SemiBold,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
                 )
                 Text(
-                    text = "${book.pageCount} pages",
+                    text = "${book.pageCount} pages · ${formatFileSize(book.fileSize)}",
                     style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(top = 2.dp)
                 )
+                if (book.author != null) {
+                    Text(
+                        text = book.author,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                        modifier = Modifier.padding(top = 1.dp)
+                    )
+                }
             }
             if (book.isFavorite) {
                 Icon(
                     Icons.Filled.Favorite,
                     contentDescription = "Favorite",
-                    tint = MaterialTheme.colorScheme.tertiary,
-                    modifier = Modifier.size(18.dp)
+                    tint = MaterialTheme.colorScheme.error,
+                    modifier = Modifier.size(16.dp)
                 )
                 Spacer(modifier = Modifier.width(8.dp))
             }
             Icon(
                 Icons.Filled.ChevronRight,
                 contentDescription = "Open",
-                tint = MaterialTheme.colorScheme.onSurfaceVariant
+                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.size(20.dp)
             )
         }
     }
@@ -675,7 +946,9 @@ fun EmptyLibraryState(
             Spacer(modifier = Modifier.height(16.dp))
             Text(
                 text = "Your library is empty",
-                style = MaterialTheme.typography.titleLarge
+                style = MaterialTheme.typography.titleLarge,
+                color = MaterialTheme.colorScheme.onSurface,
+                fontWeight = FontWeight.Bold
             )
             Spacer(modifier = Modifier.height(8.dp))
             Text(
@@ -686,13 +959,68 @@ fun EmptyLibraryState(
             Spacer(modifier = Modifier.height(24.dp))
             Button(
                 onClick = { importLauncher.launch(arrayOf("application/pdf")) },
-                shape = RoundedCornerShape(12.dp)
+                shape = RoundedCornerShape(12.dp),
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = MaterialTheme.colorScheme.primary,
+                    contentColor = MaterialTheme.colorScheme.onPrimary
+                )
             ) {
                 Icon(Icons.Filled.Add, contentDescription = null, modifier = Modifier.size(18.dp))
                 Spacer(Modifier.width(8.dp))
                 Text("Import Your First Book")
             }
         }
+    }
+}
+
+@Composable
+private fun SheetRow(
+    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    label: String,
+    onClick: () -> Unit,
+    iconTint: Color = MaterialTheme.colorScheme.onSurfaceVariant
+) {
+    Surface(
+        onClick = onClick,
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 4.dp),
+        shape = RoundedCornerShape(12.dp),
+        color = Color.Transparent
+    ) {
+        Row(
+            modifier = Modifier.padding(vertical = 8.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Surface(
+                shape = RoundedCornerShape(10.dp),
+                color = MaterialTheme.colorScheme.surfaceVariant,
+                modifier = Modifier.size(36.dp)
+            ) {
+                Box(contentAlignment = Alignment.Center) {
+                    Icon(
+                        icon,
+                        contentDescription = null,
+                        tint = iconTint,
+                        modifier = Modifier.size(18.dp)
+                    )
+                }
+            }
+            Spacer(Modifier.width(16.dp))
+            Text(
+                text = label,
+                style = MaterialTheme.typography.bodyLarge,
+                color = MaterialTheme.colorScheme.onSurface
+            )
+        }
+    }
+}
+
+private fun formatFileSize(bytes: Long): String {
+    return when {
+        bytes < 1024 -> "$bytes B"
+        bytes < 1024 * 1024 -> "${bytes / 1024} KB"
+        else -> "%.1f MB".format(bytes / (1024.0 * 1024.0))
     }
 }
 

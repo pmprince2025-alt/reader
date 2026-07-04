@@ -1,4 +1,4 @@
-package com.folio.feature.reader
+﻿package com.folio.feature.reader
 
 import android.content.Context
 import android.graphics.Bitmap
@@ -25,6 +25,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.*
@@ -69,22 +70,26 @@ fun ReaderScreen(
     }
 
     val backgroundColor = when (state.readingMode) {
-        ReadingMode.STANDARD -> Color(0xFFFAF7F2)
-        ReadingMode.SEPIA -> Color(0xFFF2E8D5)
-        ReadingMode.NIGHT -> Color(0xFF141210)
+        ReadingMode.STANDARD -> Color(0xFFFFFFFF)
+        ReadingMode.SEPIA -> Color(0xFFF5F0E6)
+        ReadingMode.NIGHT -> Color(0xFF0A0C14)
     }
 
     val textColor = when (state.readingMode) {
-        ReadingMode.STANDARD -> Color(0xFF1A1614)
-        ReadingMode.SEPIA -> Color(0xFF3A2E22)
-        ReadingMode.NIGHT -> Color(0xFFEBE4DA)
+        ReadingMode.STANDARD -> Color(0xFF1E1E2E)
+        ReadingMode.SEPIA -> Color(0xFF3D342B)
+        ReadingMode.NIGHT -> Color(0xFFC7D2FE)
     }
+
+    val accentCyan = Color(0xFF00BCD4)
 
     var showTocSheet by remember { mutableStateOf(false) }
     var showMoreSheet by remember { mutableStateOf(false) }
     var showGoToPageDialog by remember { mutableStateOf(false) }
     var showBookmarksSheet by remember { mutableStateOf(false) }
     var showBookInfoDialog by remember { mutableStateOf(false) }
+    var ghostArrowType by remember { mutableIntStateOf(0) }
+    val ghostArrowAlpha = remember { Animatable(0f) }
     val scope = rememberCoroutineScope()
     val uiContext = LocalContext.current
     val hapticsEnabled by viewModel.hapticsEnabled.collectAsState(initial = true)
@@ -176,7 +181,6 @@ fun ReaderScreen(
                             )
                         }
                     }
-
                     if (!state.isChromeVisible) {
                         TapZones(
                             onCenterTap = { viewModel.toggleChrome() },
@@ -185,13 +189,52 @@ fun ReaderScreen(
                                     currentView.performHapticFeedback(android.view.HapticFeedbackConstants.KEYBOARD_TAP)
                                 }
                                 viewModel.navigateToPage(state.currentPage - 1)
+                                ghostArrowType = 1
+                                scope.launch {
+                                    ghostArrowAlpha.snapTo(0f)
+                                    ghostArrowAlpha.animateTo(0.5f, tween(300))
+                                    ghostArrowAlpha.animateTo(0f, tween(700))
+                                    ghostArrowType = 0
+                                }
                             },
                             onNextPage = {
                                 if (hapticsEnabled) {
                                     currentView.performHapticFeedback(android.view.HapticFeedbackConstants.KEYBOARD_TAP)
                                 }
                                 viewModel.navigateToPage(state.currentPage + 1)
+                                ghostArrowType = 2
+                                scope.launch {
+                                    ghostArrowAlpha.snapTo(0f)
+                                    ghostArrowAlpha.animateTo(0.5f, tween(300))
+                                    ghostArrowAlpha.animateTo(0f, tween(700))
+                                    ghostArrowType = 0
+                                }
                             }
+                        )
+                    }
+
+                    if (ghostArrowType == 1) {
+                        Icon(
+                            Icons.AutoMirrored.Filled.ArrowBack,
+                            contentDescription = null,
+                            modifier = Modifier
+                                .size(64.dp)
+                                .align(Alignment.CenterStart)
+                                .padding(start = 16.dp)
+                                .graphicsLayer { alpha = ghostArrowAlpha.value },
+                            tint = textColor
+                        )
+                    }
+                    if (ghostArrowType == 2) {
+                        Icon(
+                            Icons.AutoMirrored.Filled.ArrowForward,
+                            contentDescription = null,
+                            modifier = Modifier
+                                .size(64.dp)
+                                .align(Alignment.CenterEnd)
+                                .padding(end = 16.dp)
+                                .graphicsLayer { alpha = ghostArrowAlpha.value },
+                            tint = textColor
                         )
                     }
 
@@ -211,7 +254,7 @@ fun ReaderScreen(
                         ) {
                             Surface(
                                 shape = CircleShape,
-                                color = backgroundColor.copy(alpha = 0.7f),
+                                color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.7f),
                                 shadowElevation = 4.dp
                             ) {
                                 Icon(
@@ -234,7 +277,7 @@ fun ReaderScreen(
                         ) {
                             Surface(
                                 shape = CircleShape,
-                                color = backgroundColor.copy(alpha = 0.7f),
+                                color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.7f),
                                 shadowElevation = 4.dp
                             ) {
                                 Icon(
@@ -253,90 +296,152 @@ fun ReaderScreen(
                     enter = if (reduceMotion) fadeIn(animationSpec = tween(180)) else fadeIn() + slideInVertically { -it },
                     exit = if (reduceMotion) fadeOut(animationSpec = tween(180)) else fadeOut() + slideOutVertically { -it }
                 ) {
+                    var showBrightness by remember { mutableStateOf(false) }
                     Column(modifier = Modifier.fillMaxSize()) {
-                        TopAppBar(
-                            title = {
-                                Text(
-                                    text = state.title,
-                                    maxLines = 1,
-                                    overflow = TextOverflow.Ellipsis,
-                                    style = MaterialTheme.typography.titleMedium
-                                )
-                            },
-                            navigationIcon = {
-                                IconButton(onClick = onBackClick) {
-                                    Icon(Icons.AutoMirrored.Filled.ArrowBack, "Back")
-                                }
-                            },
-                            actions = {
-                                IconButton(onClick = { showTocSheet = true }) {
-                                    @Suppress("DEPRECATION") Icon(Icons.Filled.List, "Table of Contents")
-                                }
-                                IconButton(onClick = { viewModel.toggleBookmark(); viewModel.refreshBookmarkState() }) {
-                                    Icon(
-                                        if (state.isCurrentPageBookmarked) Icons.Filled.Bookmark else Icons.Filled.BookmarkBorder,
-                                        "Bookmark",
-                                        tint = if (state.isCurrentPageBookmarked) MaterialTheme.colorScheme.tertiary else textColor
-                                    )
-                                }
-                                IconButton(onClick = { showMoreSheet = true }) {
-                                    Icon(Icons.Filled.MoreVert, "More")
-                                }
-                            },
-                            colors = TopAppBarDefaults.topAppBarColors(
-                                containerColor = backgroundColor.copy(alpha = 0.95f),
-                                titleContentColor = textColor,
-                                navigationIconContentColor = textColor,
-                                actionIconContentColor = textColor
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .background(MaterialTheme.colorScheme.surface.copy(alpha = 0.75f))
+                                .statusBarsPadding()
+                                .padding(horizontal = 4.dp)
+                                .height(56.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            IconButton(onClick = onBackClick) {
+                                Icon(Icons.AutoMirrored.Filled.ArrowBack, "Back", tint = textColor)
+                            }
+                            Text(
+                                text = state.title,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis,
+                                style = MaterialTheme.typography.titleMedium,
+                                color = textColor,
+                                modifier = Modifier.weight(1f),
+                                textAlign = TextAlign.Center
                             )
-                        )
+                            IconButton(onClick = { viewModel.toggleBookmark(); viewModel.refreshBookmarkState() }) {
+                                Icon(
+                                    if (state.isCurrentPageBookmarked) Icons.Filled.Bookmark else Icons.Filled.BookmarkBorder,
+                                    "Bookmark",
+                                    tint = if (state.isCurrentPageBookmarked) MaterialTheme.colorScheme.tertiary else textColor
+                                )
+                            }
+                            IconButton(onClick = { showTocSheet = true }) {
+                                @Suppress("DEPRECATION") Icon(Icons.Filled.List, "Table of Contents", tint = textColor)
+                            }
+                            IconButton(onClick = { showMoreSheet = true }) {
+                                Icon(Icons.Filled.MoreVert, "More", tint = textColor)
+                            }
+                        }
 
                         Spacer(modifier = Modifier.weight(1f))
 
-                        Surface(
-                            color = backgroundColor.copy(alpha = 0.95f),
-                            modifier = Modifier.fillMaxWidth()
-                        ) {
-                            Column(modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)) {
-                                PageScrubber(
-                                    currentPage = state.currentPage,
-                                    pageCount = state.pageCount,
-                                    textColor = textColor,
-                                    getThumbnail = { viewModel.getPageBitmap(it) },
-                                    onSeek = { viewModel.navigateToPage(it) }
-                                )
-
-                                var showBrightness by remember { mutableStateOf(false) }
-                                Row(
-                                    modifier = Modifier.fillMaxWidth(),
-                                    horizontalArrangement = Arrangement.End
-                                ) {
-                                    IconButton(onClick = { showBookmarksSheet = true }) {
-                                        Icon(
-                                            Icons.Filled.Bookmarks,
-                                            contentDescription = "Bookmarks",
-                                            tint = textColor
+                        Box {
+                            Surface(
+                                color = MaterialTheme.colorScheme.surface.copy(alpha = 0.75f),
+                                modifier = Modifier.fillMaxWidth()
+                            ) {
+                                Column(modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)) {
+                                    Row(
+                                        modifier = Modifier.fillMaxWidth(),
+                                        horizontalArrangement = Arrangement.SpaceBetween,
+                                        verticalAlignment = Alignment.CenterVertically
+                                    ) {
+                                        Text(
+                                            text = "Page ${state.currentPage + 1}",
+                                            style = MaterialTheme.typography.bodySmall,
+                                            color = textColor
+                                        )
+                                        Text(
+                                            text = "of ${state.pageCount}",
+                                            style = MaterialTheme.typography.bodySmall,
+                                            color = textColor.copy(alpha = 0.6f)
                                         )
                                     }
-                                    IconButton(onClick = { showBrightness = !showBrightness }) {
-                                        Icon(
-                                            Icons.Filled.BrightnessMedium,
-                                            contentDescription = "Brightness",
-                                            tint = textColor
+
+                                    Spacer(modifier = Modifier.height(4.dp))
+
+                                    PageScrubber(
+                                        currentPage = state.currentPage,
+                                        pageCount = state.pageCount,
+                                        textColor = textColor,
+                                        getThumbnail = { viewModel.getPageBitmap(it) },
+                                        onSeek = { viewModel.navigateToPage(it) }
+                                    )
+
+                                    Spacer(modifier = Modifier.height(4.dp))
+
+                                    Row(
+                                        modifier = Modifier.fillMaxWidth(),
+                                        horizontalArrangement = Arrangement.SpaceBetween,
+                                        verticalAlignment = Alignment.CenterVertically
+                                    ) {
+                                        Row(
+                                            verticalAlignment = Alignment.CenterVertically,
+                                            modifier = Modifier.clickable { showBookmarksSheet = true }
+                                        ) {
+                                            Icon(
+                                                Icons.Filled.Bookmarks,
+                                                contentDescription = "Bookmarks",
+                                                tint = textColor,
+                                                modifier = Modifier.size(20.dp)
+                                            )
+                                            if (state.bookmarks.isNotEmpty()) {
+                                                Spacer(Modifier.width(4.dp))
+                                                Text(
+                                                    text = "${state.bookmarks.size}",
+                                                    style = MaterialTheme.typography.bodySmall,
+                                                    color = textColor
+                                                )
+                                            }
+                                        }
+
+                                        Text(
+                                            text = "${state.currentPage + 1} / ${state.pageCount}",
+                                            style = MaterialTheme.typography.bodySmall,
+                                            color = textColor
                                         )
+
+                                        IconButton(onClick = { showBrightness = !showBrightness }) {
+                                            Icon(
+                                                Icons.Filled.BrightnessMedium,
+                                                contentDescription = "Brightness",
+                                                tint = textColor
+                                            )
+                                        }
                                     }
                                 }
-                                if (showBrightness) {
-                                    Slider(
-                                        value = state.brightness,
-                                        onValueChange = { viewModel.setBrightness(it) },
-                                        valueRange = 0f..1f,
-                                        modifier = Modifier.fillMaxWidth(),
-                                        colors = SliderDefaults.colors(
-                                            thumbColor = textColor,
-                                            activeTrackColor = textColor
+                            }
+
+                            if (showBrightness) {
+                                Surface(
+                                    modifier = Modifier
+                                        .align(Alignment.BottomEnd)
+                                        .padding(end = 8.dp, bottom = 8.dp)
+                                        .width(44.dp)
+                                        .height(120.dp),
+                                    shape = RoundedCornerShape(12.dp),
+                                    shadowElevation = 8.dp,
+                                    color = MaterialTheme.colorScheme.surface.copy(alpha = 0.95f)
+                                ) {
+                                    Box(
+                                        modifier = Modifier.fillMaxSize(),
+                                        contentAlignment = Alignment.Center
+                                    ) {
+                                        Slider(
+                                            value = state.brightness,
+                                            onValueChange = { viewModel.setBrightness(it) },
+                                            valueRange = 0f..1f,
+                                            modifier = Modifier
+                                                .size(width = 100.dp, height = 44.dp)
+                                                .rotate(-90f),
+                                            colors = SliderDefaults.colors(
+                                                thumbColor = textColor,
+                                                activeTrackColor = textColor,
+                                                inactiveTrackColor = textColor.copy(alpha = 0.2f)
+                                            )
                                         )
-                                    )
+                                    }
                                 }
                             }
                         }
@@ -387,7 +492,7 @@ fun ReaderScreen(
     if (showTocSheet) {
         ModalBottomSheet(
             onDismissRequest = { showTocSheet = false },
-            containerColor = backgroundColor
+            containerColor = MaterialTheme.colorScheme.surface
         ) {
             Column(
                 modifier = Modifier
@@ -408,107 +513,220 @@ fun ReaderScreen(
                     )
                 } else {
                     state.tocEntries.forEach { entry ->
-                        Surface(
-                            onClick = {
-                                viewModel.navigateToPage(entry.pageIndex)
-                                showTocSheet = false
-                            },
-                            modifier = Modifier.fillMaxWidth().padding(vertical = 2.dp),
-                            shape = RoundedCornerShape(8.dp),
-                            color = if (entry.pageIndex == state.currentPage)
-                                textColor.copy(alpha = 0.1f)
-                            else
-                                Color.Transparent
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clickable {
+                                    viewModel.navigateToPage(entry.pageIndex)
+                                    showTocSheet = false
+                                }
+                                .padding(vertical = 2.dp),
+                            verticalAlignment = Alignment.CenterVertically
                         ) {
+                            if (entry.pageIndex == state.currentPage) {
+                                Box(
+                                    modifier = Modifier
+                                        .width(4.dp)
+                                        .height(40.dp)
+                                        .background(MaterialTheme.colorScheme.primary)
+                                )
+                            } else {
+                                Spacer(modifier = Modifier.width(4.dp))
+                            }
+                            Spacer(Modifier.width(8.dp))
+                            Text(
+                                text = "${entry.pageIndex + 1}",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = textColor.copy(alpha = 0.5f),
+                                modifier = Modifier.width(32.dp)
+                            )
                             Text(
                                 text = entry.title,
                                 style = MaterialTheme.typography.bodyLarge,
                                 color = textColor,
-                                modifier = Modifier.padding(12.dp)
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis,
+                                modifier = Modifier.weight(1f)
                             )
                         }
+                        HorizontalDivider(color = textColor.copy(alpha = 0.08f))
                     }
                 }
                 Spacer(modifier = Modifier.height(32.dp))
             }
         }
     }
-
     if (showMoreSheet) {
         ModalBottomSheet(
             onDismissRequest = { showMoreSheet = false },
-            containerColor = backgroundColor
+            containerColor = MaterialTheme.colorScheme.surface
         ) {
             Column(modifier = Modifier.padding(24.dp)) {
                 Text(
-                    text = "More",
-                    style = MaterialTheme.typography.titleLarge,
-                    color = textColor,
-                    modifier = Modifier.padding(bottom = 16.dp)
+                    "Reading Mode",
+                    style = MaterialTheme.typography.labelMedium,
+                    color = textColor.copy(alpha = 0.6f)
                 )
-
-                // Reading Mode
-                Text("Reading Mode", style = MaterialTheme.typography.labelMedium, color = textColor.copy(alpha = 0.6f))
-                Spacer(Modifier.height(4.dp))
+                Spacer(Modifier.height(8.dp))
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     ReadingMode.entries.forEach { mode ->
+                        val isSelected = state.readingMode == mode
+                        val icon = when (mode) {
+                            ReadingMode.STANDARD -> Icons.Filled.LightMode
+                            ReadingMode.SEPIA -> Icons.Filled.WbSunny
+                            ReadingMode.NIGHT -> Icons.Filled.DarkMode
+                        }
                         FilterChip(
-                            selected = state.readingMode == mode,
+                            selected = isSelected,
                             onClick = { viewModel.setReadingMode(mode) },
-                            label = { Text(mode.name, style = MaterialTheme.typography.labelSmall) }
+                            label = { Text(mode.name, style = MaterialTheme.typography.labelSmall) },
+                            leadingIcon = {
+                                Box(
+                                    modifier = Modifier
+                                        .size(20.dp)
+                                        .background(
+                                            if (isSelected) accentCyan.copy(alpha = 0.15f)
+                                            else textColor.copy(alpha = 0.1f),
+                                            CircleShape
+                                        ),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Icon(
+                                        icon,
+                                        contentDescription = null,
+                                        modifier = Modifier.size(14.dp),
+                                        tint = if (isSelected) accentCyan else textColor
+                                    )
+                                }
+                            },
+                            colors = FilterChipDefaults.filterChipColors(
+                                containerColor = Color.Transparent,
+                                selectedContainerColor = accentCyan.copy(alpha = 0.08f),
+                                labelColor = textColor,
+                                selectedLabelColor = textColor,
+                                iconColor = textColor,
+                                selectedIconColor = accentCyan
+                            ),
+                            border = BorderStroke(
+                                width = 1.dp,
+                                color = if (isSelected) accentCyan else textColor.copy(alpha = 0.2f)
+                            )
                         )
                     }
                 }
 
                 Spacer(Modifier.height(16.dp))
 
-                // Page Turn Mode
-                Text("Page Turn", style = MaterialTheme.typography.labelMedium, color = textColor.copy(alpha = 0.6f))
-                Spacer(Modifier.height(4.dp))
+                Text(
+                    "Page Turn",
+                    style = MaterialTheme.typography.labelMedium,
+                    color = textColor.copy(alpha = 0.6f)
+                )
+                Spacer(Modifier.height(8.dp))
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     TurnMode.entries.forEach { mode ->
+                        val isSelected = state.turnMode == mode
+                        val icon = when (mode) {
+                            TurnMode.CURL -> Icons.Filled.Style
+                            TurnMode.SLIDE -> Icons.Filled.SwapHoriz
+                            TurnMode.SCROLL -> Icons.Filled.SwapVert
+                        }
                         FilterChip(
-                            selected = state.turnMode == mode,
+                            selected = isSelected,
                             onClick = { viewModel.setTurnMode(mode) },
-                            label = { Text(mode.name, style = MaterialTheme.typography.labelSmall) }
+                            label = { Text(mode.name, style = MaterialTheme.typography.labelSmall) },
+                            leadingIcon = {
+                                Box(
+                                    modifier = Modifier
+                                        .size(20.dp)
+                                        .background(
+                                            if (isSelected) accentCyan.copy(alpha = 0.15f)
+                                            else textColor.copy(alpha = 0.1f),
+                                            CircleShape
+                                        ),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Icon(
+                                        icon,
+                                        contentDescription = null,
+                                        modifier = Modifier.size(14.dp),
+                                        tint = if (isSelected) accentCyan else textColor
+                                    )
+                                }
+                            },
+                            colors = FilterChipDefaults.filterChipColors(
+                                containerColor = Color.Transparent,
+                                selectedContainerColor = accentCyan.copy(alpha = 0.08f),
+                                labelColor = textColor,
+                                selectedLabelColor = textColor,
+                                iconColor = textColor,
+                                selectedIconColor = accentCyan
+                            ),
+                            border = BorderStroke(
+                                width = 1.dp,
+                                color = if (isSelected) accentCyan else textColor.copy(alpha = 0.2f)
+                            )
                         )
                     }
                 }
 
                 Spacer(Modifier.height(16.dp))
 
-                // Brightness
-                Text("Brightness", style = MaterialTheme.typography.labelMedium, color = textColor.copy(alpha = 0.6f))
-                Slider(
-                    value = state.brightness,
-                    onValueChange = { viewModel.setBrightness(it) },
-                    valueRange = 0f..1f,
-                    colors = SliderDefaults.colors(thumbColor = textColor, activeTrackColor = textColor)
-                )
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        "Brightness",
+                        style = MaterialTheme.typography.labelMedium,
+                        color = textColor.copy(alpha = 0.6f)
+                    )
+                    Spacer(Modifier.width(8.dp))
+                    Slider(
+                        value = state.brightness,
+                        onValueChange = { viewModel.setBrightness(it) },
+                        valueRange = 0f..1f,
+                        modifier = Modifier.weight(1f),
+                        colors = SliderDefaults.colors(
+                            thumbColor = textColor,
+                            activeTrackColor = textColor,
+                            inactiveTrackColor = textColor.copy(alpha = 0.2f)
+                        )
+                    )
+                }
 
-                HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp), color = textColor.copy(alpha = 0.15f))
+                Spacer(Modifier.height(16.dp))
 
-                ListItem(
-                    headlineContent = { Text("Go to Page") },
-                    leadingContent = { Icon(Icons.Filled.Numbers, contentDescription = null, tint = textColor) },
-                    modifier = Modifier.combinedClickable(
-                        onClick = { showMoreSheet = false; showGoToPageDialog = true }
-                    )
-                )
-                ListItem(
-                    headlineContent = { Text("Bookmarks (${state.bookmarks.size})") },
-                    leadingContent = { Icon(Icons.Filled.Bookmarks, contentDescription = null, tint = textColor) },
-                    modifier = Modifier.combinedClickable(
-                        onClick = { showMoreSheet = false; showBookmarksSheet = true }
-                    )
-                )
-                ListItem(
-                    headlineContent = { Text("Book Info") },
-                    leadingContent = { Icon(Icons.Filled.Info, contentDescription = null, tint = textColor) },
-                    modifier = Modifier.combinedClickable(
-                        onClick = { showMoreSheet = false; showBookInfoDialog = true }
-                    )
-                )
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    OutlinedButton(
+                        onClick = { showMoreSheet = false; showGoToPageDialog = true },
+                        modifier = Modifier.weight(1f)
+                    ) {
+                        Icon(
+                            Icons.Filled.Pin,
+                            contentDescription = null,
+                            modifier = Modifier.size(18.dp)
+                        )
+                        Spacer(Modifier.width(4.dp))
+                        Text("Go to Page")
+                    }
+                    OutlinedButton(
+                        onClick = { showMoreSheet = false; showBookInfoDialog = true },
+                        modifier = Modifier.weight(1f)
+                    ) {
+                        Icon(
+                            Icons.Filled.Info,
+                            contentDescription = null,
+                            modifier = Modifier.size(18.dp)
+                        )
+                        Spacer(Modifier.width(4.dp))
+                        Text("Book Info")
+                    }
+                }
+
                 Spacer(Modifier.height(24.dp))
             }
         }
@@ -518,30 +736,98 @@ fun ReaderScreen(
         var pageInput by remember { mutableStateOf("") }
         AlertDialog(
             onDismissRequest = { showGoToPageDialog = false },
-            title = { Text("Go to Page", color = textColor) },
-            containerColor = backgroundColor,
+            title = {
+                Text(
+                    "Go to Page",
+                    color = textColor,
+                    modifier = Modifier.fillMaxWidth(),
+                    textAlign = TextAlign.Center
+                )
+            },
+            containerColor = MaterialTheme.colorScheme.surface,
             text = {
-                Column {
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
                     Text(
-                        "Enter page number (1-${state.pageCount})",
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = textColor.copy(alpha = 0.6f)
+                        text = pageInput.ifEmpty { "\u2014" },
+                        style = MaterialTheme.typography.displayLarge,
+                        color = textColor,
+                        modifier = Modifier.fillMaxWidth(),
+                        textAlign = TextAlign.Center
                     )
-                    Spacer(Modifier.height(8.dp))
-                    OutlinedTextField(
-                        value = pageInput,
-                        onValueChange = { pageInput = it.filter { c -> c.isDigit() } },
-                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number, imeAction = ImeAction.Go),
-                        keyboardActions = KeyboardActions(onGo = {
-                            val page = pageInput.toIntOrNull()?.minus(1)
-                            if (page != null && page in 0 until state.pageCount) {
-                                viewModel.navigateToPage(page)
-                                showGoToPageDialog = false
+                    Spacer(Modifier.height(16.dp))
+                    Text(
+                        text = "Enter page (1-${state.pageCount})",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = textColor.copy(alpha = 0.5f),
+                        modifier = Modifier.fillMaxWidth(),
+                        textAlign = TextAlign.Center
+                    )
+                    Spacer(Modifier.height(16.dp))
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        for (i in 1..3) {
+                            OutlinedButton(
+                                onClick = { if (pageInput.length < 4) pageInput += i },
+                                modifier = Modifier.weight(1f).height(52.dp),
+                                shape = RoundedCornerShape(8.dp)
+                            ) {
+                                Text("$i", style = MaterialTheme.typography.titleLarge, color = textColor)
                             }
-                        }),
-                        singleLine = true,
-                        placeholder = { Text("e.g. 42") }
-                    )
+                        }
+                    }
+                    Spacer(Modifier.height(8.dp))
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        for (i in 4..6) {
+                            OutlinedButton(
+                                onClick = { if (pageInput.length < 4) pageInput += i },
+                                modifier = Modifier.weight(1f).height(52.dp),
+                                shape = RoundedCornerShape(8.dp)
+                            ) {
+                                Text("$i", style = MaterialTheme.typography.titleLarge, color = textColor)
+                            }
+                        }
+                    }
+                    Spacer(Modifier.height(8.dp))
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        for (i in 7..9) {
+                            OutlinedButton(
+                                onClick = { if (pageInput.length < 4) pageInput += i },
+                                modifier = Modifier.weight(1f).height(52.dp),
+                                shape = RoundedCornerShape(8.dp)
+                            ) {
+                                Text("$i", style = MaterialTheme.typography.titleLarge, color = textColor)
+                            }
+                        }
+                    }
+                    Spacer(Modifier.height(8.dp))
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        Spacer(modifier = Modifier.weight(1f))
+                        OutlinedButton(
+                            onClick = { if (pageInput.length < 4) pageInput += 0 },
+                            modifier = Modifier.weight(1f).height(52.dp),
+                            shape = RoundedCornerShape(8.dp)
+                        ) {
+                            Text("0", style = MaterialTheme.typography.titleLarge, color = textColor)
+                        }
+                        OutlinedButton(
+                            onClick = { pageInput = pageInput.dropLast(1) },
+                            modifier = Modifier.weight(1f).height(52.dp),
+                            shape = RoundedCornerShape(8.dp)
+                        ) {
+                            Icon(Icons.Filled.Backspace, contentDescription = "Delete", tint = textColor)
+                        }
+                    }
                 }
             },
             confirmButton = {
@@ -562,7 +848,7 @@ fun ReaderScreen(
     if (showBookmarksSheet) {
         ModalBottomSheet(
             onDismissRequest = { showBookmarksSheet = false },
-            containerColor = backgroundColor
+            containerColor = MaterialTheme.colorScheme.surface
         ) {
             Column(modifier = Modifier.padding(24.dp)) {
                 Text(
@@ -579,46 +865,44 @@ fun ReaderScreen(
                     )
                 } else {
                     state.bookmarks.forEach { bm ->
-                        Surface(
-                            onClick = {
-                                viewModel.navigateToPage(bm.pageIndex)
-                                showBookmarksSheet = false
-                            },
-                            modifier = Modifier.fillMaxWidth().padding(vertical = 2.dp),
-                            shape = RoundedCornerShape(8.dp),
-                            color = if (bm.pageIndex == state.currentPage)
-                                textColor.copy(alpha = 0.1f)
-                            else
-                                Color.Transparent
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clickable {
+                                    viewModel.navigateToPage(bm.pageIndex)
+                                    showBookmarksSheet = false
+                                }
+                                .padding(vertical = 8.dp, horizontal = 4.dp),
+                            verticalAlignment = Alignment.CenterVertically
                         ) {
-                            Row(
-                                modifier = Modifier.padding(12.dp),
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                Icon(
-                                    Icons.Filled.Bookmark,
-                                    contentDescription = null,
-                                    tint = MaterialTheme.colorScheme.tertiary,
-                                    modifier = Modifier.size(20.dp)
+                            Text(
+                                text = "${bm.pageIndex + 1}",
+                                style = MaterialTheme.typography.headlineSmall,
+                                fontWeight = FontWeight.Bold,
+                                color = accentCyan,
+                                modifier = Modifier.width(48.dp)
+                            )
+                            Column(modifier = Modifier.weight(1f)) {
+                                Text(
+                                    text = bm.label ?: "Page ${bm.pageIndex + 1}",
+                                    style = MaterialTheme.typography.bodyLarge,
+                                    color = textColor
                                 )
-                                Spacer(Modifier.width(12.dp))
-                                Column(modifier = Modifier.weight(1f)) {
-                                    Text(
-                                        text = bm.label ?: "Page ${bm.pageIndex + 1}",
-                                        style = MaterialTheme.typography.bodyLarge,
-                                        color = textColor
-                                    )
-                                    Text(
-                                        text = SimpleDateFormat("MMM dd", Locale.getDefault()).format(Date(bm.createdAt)),
-                                        style = MaterialTheme.typography.bodySmall,
-                                        color = textColor.copy(alpha = 0.5f)
-                                    )
-                                }
-                                IconButton(onClick = { viewModel.deleteBookmark(bm.id) }) {
-                                    Icon(Icons.Filled.Delete, contentDescription = "Delete bookmark", tint = textColor.copy(alpha = 0.5f))
-                                }
+                                Text(
+                                    text = SimpleDateFormat("MMM dd, yyyy", Locale.getDefault()).format(Date(bm.createdAt)),
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = textColor.copy(alpha = 0.5f)
+                                )
+                            }
+                            IconButton(onClick = { viewModel.deleteBookmark(bm.id) }) {
+                                Icon(
+                                    Icons.Filled.Delete,
+                                    contentDescription = "Delete bookmark",
+                                    tint = textColor.copy(alpha = 0.5f)
+                                )
                             }
                         }
+                        HorizontalDivider(color = textColor.copy(alpha = 0.08f))
                     }
                 }
                 Spacer(Modifier.height(32.dp))
@@ -629,8 +913,15 @@ fun ReaderScreen(
     if (showBookInfoDialog) {
         AlertDialog(
             onDismissRequest = { showBookInfoDialog = false },
-            title = { Text("Book Info", color = textColor) },
-            containerColor = backgroundColor,
+            title = {
+                Text(
+                    "Book Info",
+                    color = textColor,
+                    modifier = Modifier.fillMaxWidth(),
+                    textAlign = TextAlign.Center
+                )
+            },
+            containerColor = MaterialTheme.colorScheme.surface,
             text = {
                 Column {
                     InfoRow("Title", state.title, textColor)
@@ -646,7 +937,6 @@ fun ReaderScreen(
         )
     }
 }
-
 @Composable
 private fun InfoRow(label: String, value: String, textColor: Color) {
     Row(
@@ -786,7 +1076,6 @@ private fun PageCurlReader(
 }
 
 enum class TurnDirection { NEXT, PREVIOUS }
-
 @Composable
 private fun PageCurlComposable(
     currentPageBitmap: Bitmap?,
@@ -924,7 +1213,6 @@ private fun PageCurlComposable(
         }
     }
 }
-
 private fun DrawScope.drawCornerCurl(
     w: Float, h: Float, progress: Float,
     dragStart: Offset, dragOffset: Offset,
@@ -1006,7 +1294,6 @@ private fun DrawScope.drawPageOnCanvas(
         }
     }
 }
-
 @Composable
 private fun SlideReader(
     viewModel: ReaderViewModel, currentPage: Int, pageCount: Int,
