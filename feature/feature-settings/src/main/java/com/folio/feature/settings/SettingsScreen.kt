@@ -218,6 +218,7 @@ private fun RadioIconContainer(icon: @Composable () -> Unit) {
 
 @Composable
 private fun RadioIndicator(selected: Boolean) {
+    val surfaceColor = MaterialTheme.colorScheme.surface
     val color by animateColorAsState(
         targetValue = if (selected) MaterialTheme.colorScheme.secondary else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
         label = "radioColor"
@@ -229,7 +230,7 @@ private fun RadioIndicator(selected: Boolean) {
                 radius = size.minDimension / 2f
             )
             drawCircle(
-                color = MaterialTheme.colorScheme.surface,
+                color = surfaceColor,
                 radius = size.minDimension / 4f
             )
         } else {
@@ -533,6 +534,12 @@ private fun GradientSlider(
     onValueChange: (Float) -> Unit,
     modifier: Modifier = Modifier
 ) {
+    val density = LocalDensity.current
+    val outlineColor = MaterialTheme.colorScheme.outline.copy(alpha = 0.3f)
+    val trackGradientColors = listOf(
+        MaterialTheme.colorScheme.secondary,
+        MaterialTheme.colorScheme.primary
+    )
     val trackHeight = 6.dp
     val thumbRadius = 10.dp
 
@@ -541,8 +548,8 @@ private fun GradientSlider(
             .height(thumbRadius * 2 + 4.dp)
             .fillMaxWidth()
     ) {
-        val trackWidth = constraints.maxWidth.toFloat() - thumbRadius.toPx() * 2
-        val thumbOffset: Dp = (trackWidth * value.coerceIn(0f, 1f)).toDp()
+        val trackWidth = constraints.maxWidth.toFloat() - with(density) { thumbRadius.toPx() * 2 }
+        val thumbOffset: Dp = with(density) { (trackWidth * value.coerceIn(0f, 1f)).toDp() }
 
         Box(
             modifier = Modifier
@@ -557,17 +564,14 @@ private fun GradientSlider(
                 val fillWidth = size.width * value.coerceIn(0f, 1f)
 
                 drawRoundRect(
-                    color = MaterialTheme.colorScheme.outline.copy(alpha = 0.3f),
+                    color = outlineColor,
                     cornerRadius = CornerRadius(3.dp.toPx(), 3.dp.toPx()),
                     size = Size(size.width, size.height)
                 )
                 if (fillWidth > 0f) {
                     drawRoundRect(
                         brush = Brush.horizontalGradient(
-                            colors = listOf(
-                                MaterialTheme.colorScheme.secondary,
-                                MaterialTheme.colorScheme.primary
-                            )
+                            colors = trackGradientColors
                         ),
                         cornerRadius = CornerRadius(3.dp.toPx(), 3.dp.toPx()),
                         size = Size(fillWidth, size.height)

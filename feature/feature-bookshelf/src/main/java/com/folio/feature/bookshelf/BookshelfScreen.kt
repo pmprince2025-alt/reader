@@ -34,6 +34,7 @@ import com.folio.core.ui.components.FolioBookCard
 import com.folio.core.ui.theme.screenMargin
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun BookshelfScreen(
     onBookClick: (Long) -> Unit,
@@ -678,9 +679,9 @@ fun BookshelfContent(
                                         maxLines = 1,
                                         overflow = TextOverflow.Ellipsis
                                     )
-                                    if (book.author != null) {
+                                    book.author?.let { author ->
                                         Text(
-                                            text = book.author,
+                                            text = author,
                                             style = MaterialTheme.typography.bodySmall,
                                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                                             maxLines = 1,
@@ -896,9 +897,9 @@ fun ShelfListItem(
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.padding(top = 2.dp)
                 )
-                if (book.author != null) {
+                book.author?.let { author ->
                     Text(
-                        text = book.author,
+                        text = author,
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         maxLines = 1,

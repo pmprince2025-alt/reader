@@ -171,19 +171,17 @@ fun BookDetailScreen(
 
                 Spacer(modifier = Modifier.height(6.dp))
 
-                if (book.author != null) {
+                book.author?.let { author ->
                     Text(
-                        text = book.author,
+                        text = author,
                         fontSize = 14.sp,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         textAlign = TextAlign.Center,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis
                     )
-                    Spacer(modifier = Modifier.height(20.dp))
-                } else {
-                    Spacer(modifier = Modifier.height(20.dp))
                 }
+                Spacer(modifier = Modifier.height(20.dp))
 
                 Row(
                     modifier = Modifier.fillMaxWidth(),
