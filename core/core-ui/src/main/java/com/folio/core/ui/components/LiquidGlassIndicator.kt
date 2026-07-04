@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -18,6 +19,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.graphics.Brush
@@ -89,28 +91,34 @@ fun LiquidGlassIndicator(
                 height = with(density) { hPx.toDp() }
             )
             .drawBehind {
-                val outline = shape.createOutline(size, layoutDirection, this)
-                drawOutline(
-                    outline = outline,
+                val cr = if (shape is RoundedCornerShape) {
+                    val r = shape.topStartCorner.let { if (it is androidx.compose.ui.unit.Dp) it.toPx() else 0f }
+                    CornerRadius(r)
+                } else CornerRadius(minOf(size.width, size.height) / 2f)
+                drawRoundRect(
                     brush = Brush.linearGradient(
                         colors = listOf(
                             color.copy(alpha = 0.32f),
                             color.copy(alpha = 0.08f)
                         )
-                    )
+                    ),
+                    cornerRadius = cr,
+                    size = size
                 )
-                drawOutline(
-                    outline = outline,
+                drawRoundRect(
                     color = color.copy(alpha = 0.55f),
+                    cornerRadius = cr,
+                    size = size,
                     style = Stroke(width = 1.dp.toPx())
                 )
-                drawOutline(
-                    outline = outline,
+                drawRoundRect(
                     brush = Brush.linearGradient(
                         colors = listOf(Color.White.copy(alpha = 0.35f), Color.Transparent),
                         start = Offset(size.width * 0.2f, 0f),
                         end = Offset(size.width * 0.8f, 0f)
                     ),
+                    cornerRadius = cr,
+                    size = size,
                     alpha = 0.4f
                 )
             }
@@ -154,11 +162,10 @@ fun Modifier.reportChipPosition(
     index: Int,
     onPosition: (Int, Rect) -> Unit
 ): Modifier = this.onGloballyPositioned { coordinates ->
-    val parentBounds = coordinates.parentCoordinates?.let { parent ->
-        val childPos = coordinates.positionInParent()
-        Rect(childPos.x, childPos.y, childPos.x + coordinates.size.width, childPos.y + coordinates.size.height)
-    }
-    if (parentBounds != null) {
-        onPosition(index, parentBounds)
-    }
+    val childPos = coordinates.positionInRoot()
+    val parentPos = coordinates.parentCoordinates?.positionInRoot() ?: return@onGloballyPositioned
+    val relX = childPos.x - parentPos.x
+    val relY = childPos.y - parentPos.y
+    val rect = Rect(relX, relY, relX + coordinates.size.width, relY + coordinates.size.height)
+    onPosition(index, rect)
 }

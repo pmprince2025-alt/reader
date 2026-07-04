@@ -5,6 +5,7 @@ import androidx.compose.animation.core.SpringSpec
 import androidx.compose.animation.core.spring
 import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.awaitFirstDown
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.Modifier
@@ -31,13 +32,13 @@ fun Modifier.dimplePress(
         .pointerInput(Unit) {
             awaitEachGesture {
                 val down = awaitFirstDown()
-                launch { scale.animateTo(scaleFactor, animationSpec) }
+                this@pointerInput.launch { scale.animateTo(scaleFactor, animationSpec) }
                 do {
                     val event = awaitPointerEvent()
                     val released = event.changes.all { !it.pressed }
                     if (released) {
                         currentOnTap.value?.invoke()
-                        launch { scale.animateTo(1f, animationSpec) }
+                        this@pointerInput.launch { scale.animateTo(1f, animationSpec) }
                         break
                     }
                 } while (true)
@@ -104,15 +105,15 @@ fun Modifier.dimplePressWithFill(
         .pointerInput(Unit) {
             awaitEachGesture {
                 val down = awaitFirstDown()
-                launch { scale.animateTo(scaleFactor, scaleAnimSpec) }
-                launch { fillFraction.animateTo(1f, fillAnimSpec) }
+                this@pointerInput.launch { scale.animateTo(scaleFactor, scaleAnimSpec) }
+                this@pointerInput.launch { fillFraction.animateTo(1f, fillAnimSpec) }
                 do {
                     val event = awaitPointerEvent()
                     val released = event.changes.all { !it.pressed }
                     if (released) {
                         currentOnTap.value?.invoke()
-                        launch { scale.animateTo(1f, scaleAnimSpec) }
-                        launch { fillFraction.animateTo(0f, fillAnimSpec) }
+                        this@pointerInput.launch { scale.animateTo(1f, scaleAnimSpec) }
+                        this@pointerInput.launch { fillFraction.animateTo(0f, fillAnimSpec) }
                         break
                     }
                 } while (true)

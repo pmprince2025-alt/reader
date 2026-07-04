@@ -1,8 +1,10 @@
 package com.folio.core.ui.components
 
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -12,7 +14,9 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shape
@@ -25,6 +29,7 @@ import androidx.compose.ui.unit.sp
 import com.folio.core.ui.theme.PlasmaCyan
 import com.folio.core.ui.theme.PlasmaViolet
 import com.folio.core.ui.theme.TextSecondary
+import kotlin.math.min
 
 private val GlassGradientStart = 0.08f
 private val GlassGradientEnd = 0.02f
@@ -41,21 +46,24 @@ fun Modifier.glassSurface(
         spotShadowColor = Color.Black.copy(alpha = shadowAlpha)
     }
     .drawBehind {
-        drawOutline(
-            outline = shape.createOutline(size, layoutDirection, this),
+        val cr = shapeCornerRadius(shape)
+        drawRoundRect(
             brush = Brush.linearGradient(
                 colors = listOf(tint, tint.copy(alpha = GlassGradientEnd)),
                 start = Offset.Zero,
                 end = Offset(size.width, size.height)
-            )
+            ),
+            cornerRadius = cr,
+            size = size
         )
-        drawOutline(
-            outline = shape.createOutline(size, layoutDirection, this),
+        drawRoundRect(
             brush = Brush.linearGradient(
                 colors = listOf(Color.White.copy(alpha = 0.06f), Color.Transparent),
                 start = Offset.Zero,
                 end = Offset(0f, size.height)
             ),
+            cornerRadius = cr,
+            size = size,
             alpha = 0.5f
         )
     }
@@ -65,12 +73,20 @@ fun Modifier.glassSurface(
         shape
     )
 
+private fun androidx.compose.ui.graphics.drawscope.DrawScope.shapeCornerRadius(shape: Shape): CornerRadius {
+    if (shape is RoundedCornerShape) {
+        val r = shape.topStartCorner.let { if (it is androidx.compose.ui.unit.Dp) it.toPx() else 0f }
+        return CornerRadius(r)
+    }
+    return CornerRadius(0f)
+}
+
 @Composable
 fun GlassBox(
     modifier: Modifier = Modifier,
     tint: Color = Color.White.copy(alpha = GlassGradientStart),
     shape: Shape = RoundedCornerShape(16.dp),
-    content: @Composable () -> Unit
+    content: @Composable BoxScope.() -> Unit
 ) {
     Box(
         modifier = modifier.glassSurface(tint = tint, shape = shape),
@@ -110,7 +126,7 @@ fun GlassIconButton(
     modifier: Modifier = Modifier,
     tint: Color = Color.White.copy(alpha = GlassGradientStart),
     contentTint: Color = TextSecondary,
-    icon: @Composable () -> Unit
+    icon: @Composable BoxScope.() -> Unit
 ) {
     Box(
         modifier = modifier
@@ -128,28 +144,28 @@ fun Modifier.glassCyan(): Modifier = this
         spotShadowColor = Color.Black.copy(alpha = 0.45f)
     }
     .drawBehind {
-        val shape = RoundedCornerShape(999.dp)
-        drawOutline(
-            outline = shape.createOutline(size, layoutDirection, this),
+        val r = min(size.width, size.height) / 2f
+        drawCircle(
             brush = Brush.linearGradient(
                 colors = listOf(
                     PlasmaCyan.copy(alpha = 0.32f),
                     PlasmaCyan.copy(alpha = 0.08f)
                 )
-            )
+            ),
+            radius = r
         )
-        drawOutline(
-            outline = shape.createOutline(size, layoutDirection, this),
+        drawCircle(
             color = PlasmaCyan.copy(alpha = 0.55f),
+            radius = r,
             style = Stroke(width = 1.dp.toPx())
         )
-        drawOutline(
-            outline = shape.createOutline(size, layoutDirection, this),
+        drawCircle(
             brush = Brush.linearGradient(
                 colors = listOf(Color.White.copy(alpha = 0.35f), Color.Transparent),
                 start = Offset(size.width * 0.2f, 0f),
                 end = Offset(size.width * 0.8f, 0f)
             ),
+            radius = r,
             alpha = 0.4f
         )
     }
@@ -162,41 +178,42 @@ fun Modifier.glassViolet(): Modifier = this
         spotShadowColor = Color.Black.copy(alpha = 0.45f)
     }
     .drawBehind {
-        val shape = RoundedCornerShape(999.dp)
-        drawOutline(
-            outline = shape.createOutline(size, layoutDirection, this),
+        val r = min(size.width, size.height) / 2f
+        drawCircle(
             brush = Brush.linearGradient(
                 colors = listOf(
                     PlasmaViolet.copy(alpha = 0.34f),
                     PlasmaViolet.copy(alpha = 0.08f)
                 )
-            )
+            ),
+            radius = r
         )
-        drawOutline(
-            outline = shape.createOutline(size, layoutDirection, this),
+        drawCircle(
             color = PlasmaViolet.copy(alpha = 0.55f),
+            radius = r,
             style = Stroke(width = 1.dp.toPx())
         )
-        drawOutline(
-            outline = shape.createOutline(size, layoutDirection, this),
+        drawCircle(
             brush = Brush.linearGradient(
                 colors = listOf(Color.White.copy(alpha = 0.35f), Color.Transparent),
                 start = Offset(size.width * 0.2f, 0f),
                 end = Offset(size.width * 0.8f, 0f)
             ),
+            radius = r,
             alpha = 0.4f
         )
     }
     .clip(RoundedCornerShape(999.dp))
 
 fun Modifier.glassCube(): Modifier = this.drawBehind {
-    val shape = RoundedCornerShape(14.dp)
-    drawOutline(
-        outline = shape.createOutline(size, layoutDirection, this),
+    val cr = CornerRadius(14.dp.toPx())
+    drawRoundRect(
         brush = Brush.linearGradient(
             colors = listOf(Color.White.copy(alpha = 0.22f), Color.Transparent),
             start = Offset.Zero,
             end = Offset(size.width * 0.6f, size.height * 0.4f)
-        )
+        ),
+        cornerRadius = cr,
+        size = size
     )
 }

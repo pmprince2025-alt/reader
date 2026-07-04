@@ -1,6 +1,7 @@
 package com.folio.core.ui.components
 
 import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.AnimationVector1D
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
 import androidx.compose.runtime.Composable
@@ -23,7 +24,7 @@ class RippleState(scope: CoroutineScope) {
         val x: Float,
         val y: Float,
         val maxRadius: Float,
-        val progress: Animatable
+        val progress: Animatable<Float, AnimationVector1D>
     )
 
     private val ripples = mutableStateListOf<ActiveRipple>()
