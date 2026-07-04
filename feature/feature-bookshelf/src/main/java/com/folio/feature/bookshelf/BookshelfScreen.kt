@@ -21,6 +21,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.onGloballyPositioned
@@ -592,7 +593,25 @@ fun BookshelfContent(
                             onClick = {},
                             shape = RoundedCornerShape(20.dp),
                             color = Color.Transparent,
-                            border = null
+                            border = null,
+                            modifier = Modifier
+                                .dimplePress { onSortOptionChange(option) }
+                                .onGloballyPositioned { coords ->
+                                    val parentCoords = coords.parentCoordinates ?: return@onGloballyPositioned
+                                    val childRoot = coords.localToRoot(Offset.Zero)
+                                    val parentRoot = parentCoords.localToRoot(Offset.Zero)
+                                    val relX = childRoot.x - parentRoot.x
+                                    val relY = childRoot.y - parentRoot.y
+                                    val rect = Rect(
+                                        relX, relY,
+                                        relX + coords.size.width,
+                                        relY + coords.size.height
+                                    )
+                                    if (index >= chipPositions.size) {
+                                        chipPositions.addAll(List(index - chipPositions.size + 1) { null })
+                                    }
+                                    chipPositions[index] = rect
+                                }
                         ) {
                             Text(
                                 text = when (option) {
@@ -607,26 +626,14 @@ fun BookshelfContent(
                                 modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
                             )
                         }
-                            .dimplePress { onSortOptionChange(option) }
-                            .onGloballyPositioned { coords ->
-                                val pos = coords.positionInParent()
-                                val rect = Rect(
-                                    pos.x, pos.y,
-                                    pos.x + coords.size.width,
-                                    pos.y + coords.size.height
-                                )
-                                if (index >= chipPositions.size) {
-                                    chipPositions.addAll(List(index - chipPositions.size + 1) { null })
-                                }
-                                chipPositions[index] = rect
-                            }
                     }
 
                     Surface(
                         onClick = {},
                         shape = RoundedCornerShape(20.dp),
                         color = Color.Transparent,
-                        border = null
+                        border = null,
+                        modifier = Modifier.dimplePress { onFavoritesToggle() }
                     ) {
                         Row(
                             modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
@@ -648,7 +655,6 @@ fun BookshelfContent(
                             )
                         }
                     }
-                        .dimplePress { onFavoritesToggle() }
                 }
             }
         }

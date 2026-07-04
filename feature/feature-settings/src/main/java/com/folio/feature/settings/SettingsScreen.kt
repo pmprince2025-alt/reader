@@ -6,6 +6,7 @@ import androidx.compose.animation.core.SpringSpec
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.spring
 import com.folio.core.ui.components.dimplePress
+import kotlin.math.roundToInt
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
